@@ -1,0 +1,17 @@
+body {
+	overflow: hidden;
+	margin: 0px;
+	background-color: black;
+}
+
+#info {
+	position: absolute;
+	top: 10px;
+	left: 10px;
+	color: white;
+	font-family: Arial, sans-serif;
+	font-size: 14px;
+	background-color: rgba(0, 0, 0, 0.5);
+	padding: 10px;
+	border-radius: 5px;
+}
