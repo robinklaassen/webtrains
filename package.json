@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "dat.gui": "^0.7.9",
+    "dayjs": "^1.11.20",
     "three": "^0.183.2"
   }
 }

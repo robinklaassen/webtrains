@@ -2,6 +2,7 @@ import "./style.css";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { TrainManager } from "@/core/TrainManager";
+import { GameClock } from "./core/GameClock";
 
 const scene = new THREE.Scene();
 
@@ -40,7 +41,11 @@ scene.add(directionalLight);
 const timer = new THREE.Timer();
 timer.connect(document);
 
-const trainManager = new TrainManager(scene);
+const gameClock = new GameClock(new Date());
+
+const trainManager = new TrainManager(scene, gameClock);
+
+const infoElement = document.getElementById("info");
 
 function animate() {
 	timer.update();
@@ -49,6 +54,13 @@ function animate() {
 
 function render() {
 	const deltaTime = timer.getDelta();
+	gameClock.incrementTime(deltaTime);
+
+	if (infoElement) {
+		infoElement.textContent = gameClock.getFormattedDateTime();
+	}
+
 	trainManager.update(deltaTime);
+
 	renderer.render(scene, camera);
 }
