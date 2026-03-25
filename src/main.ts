@@ -63,6 +63,7 @@ const trainManager = new TrainManager(scene, gameClock, trainCache);
 const animationStartHours = 9;
 
 // Set up dat.gui controls
+// TODO add clock speed factor
 const guiParams = {
 	animationStartHours,
 	startNewAnimation() {
@@ -89,6 +90,7 @@ function animate() {
 }
 
 function render() {
+	// TODO stop clock update loop when animation is not playing
 	const deltaTime = timer.getDelta();
 	gameClock.incrementTime(deltaTime);
 
