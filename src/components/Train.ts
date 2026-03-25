@@ -1,15 +1,17 @@
 import * as THREE from "three";
 
-const sphereRadius = 0.1;
+const sphereRadius = 1;
 
 /**
  * Represents a train in the 3D scene. Each train has a mesh (a sphere) and a target position it moves towards. The Train class provides a method to update the train's position based on new coordinates.
  */
 export class Train {
 	mesh: THREE.Mesh;
+
+	// Movement is done by interpolation between origin and target based on alpha factor [0, 1].
 	origin: THREE.Vector3;
 	target: THREE.Vector3;
-	alpha: number = 0; // [0, 1] interpolation factor for movement between origin and target
+	alpha: number = 0;
 
 	constructor(position: THREE.Vector3, color: number = 0xffffff) {
 		const geometry = new THREE.SphereGeometry(sphereRadius);
@@ -25,9 +27,10 @@ export class Train {
 	 * @param newTarget - The new target position.
 	 */
 	updateTarget(newTarget: THREE.Vector3) {
-		this.origin.copy(this.mesh.position);
-		this.target.copy(newTarget);
-		this.alpha = 0;
+		this.mesh.position.copy(newTarget); // temporarily removed smoothing animation
+		// this.origin.copy(this.mesh.position);
+		// this.target.copy(newTarget);
+		// this.alpha = 0;
 	}
 
 	/**
@@ -35,8 +38,9 @@ export class Train {
 	 * @param delta interpolation factor, will be added to this train's alpha
 	 */
 	updatePosition(delta: number) {
-		this.alpha += delta;
-		this.alpha = Math.min(this.alpha, 1); // Clamp to [0, 1] to prevent extrapolation past target
-		this.mesh.position.lerpVectors(this.origin, this.target, this.alpha);
+		delta; // Currently not used since we directly set the position in updateTarget, but can be re-enabled for smoother movement
+		// this.alpha += delta;
+		// this.alpha = Math.min(this.alpha, 1); // Clamp to [0, 1] to prevent extrapolation past target
+		// this.mesh.position.lerpVectors(this.origin, this.target, this.alpha);
 	}
 }

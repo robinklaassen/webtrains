@@ -5,13 +5,22 @@ dayjs.extend(utc);
 
 const speedFactor = 450;
 
+/**
+ * Manager for the in-game time, triggers events every 10 second mark of the timestamp.
+ * Internally uses dayjs objects for all timestamp operations.
+ */
 export class GameClock {
-	timestamp: dayjs.Dayjs;
+	private timestamp: dayjs.Dayjs;
 	private listeners: ((timestamp: dayjs.Dayjs) => void)[] = [];
 	private lastTriggeredSecondMark: number;
 
 	constructor(timestamp: Date) {
 		this.timestamp = dayjs(timestamp);
+		this.lastTriggeredSecondMark = this.getSecondMark();
+	}
+
+	setTimestamp(newTimestamp: dayjs.Dayjs) {
+		this.timestamp = newTimestamp;
 		this.lastTriggeredSecondMark = this.getSecondMark();
 	}
 
@@ -24,8 +33,14 @@ export class GameClock {
 		return this.timestamp.second(this.lastTriggeredSecondMark);
 	}
 
+	// Called from the render loop
 	incrementTime(deltaTime: number) {
 		this.timestamp = this.timestamp.add(deltaTime * speedFactor, "second");
+		this.checkSecondMarkPassed();
+	}
+
+	// Checks if we've passed a new 10-second mark and triggers listeners if so
+	checkSecondMarkPassed() {
 		const currentMark = this.getSecondMark();
 		if (currentMark !== this.lastTriggeredSecondMark) {
 			this.lastTriggeredSecondMark = currentMark;
@@ -36,6 +51,7 @@ export class GameClock {
 		}
 	}
 
+	// Formatted timestamp for display in the UI
 	getFormattedDateTime(): string {
 		return this.timestamp.format("YYYY-MM-DD HH:mm");
 	}

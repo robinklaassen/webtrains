@@ -1,9 +1,14 @@
 import "./style.css";
+import dayjs from "dayjs";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { TrainManager } from "@/core/TrainManager";
 import { GameClock } from "./core/GameClock";
+import { TrainCache } from "./core/TrainCache";
+import { TrainDataProvider } from "./core/TrainDataProvider";
 
+// TODO make this configurable in the UI, as well as the speed factor
+const ANIMATION_START_HOURS = 9;
 const scene = new THREE.Scene();
 
 // set up the camera
@@ -11,9 +16,12 @@ const camera = new THREE.PerspectiveCamera(
 	75,
 	window.innerWidth / window.innerHeight,
 	0.1,
-	1000,
+	10000,
 );
-camera.position.z = 2.5;
+// Position camera to view the Dutch train region (Rijksdriehoek coordinates)
+// TODO fix camera position and orientation above Dutch boundaries
+camera.position.set(-250, 150, -250);
+camera.lookAt(150, 0, 150);
 
 // set up the renderer and add it to the DOM
 const renderer = new THREE.WebGLRenderer();
@@ -32,18 +40,34 @@ window.addEventListener("resize", () => {
 new OrbitControls(camera, renderer.domElement);
 
 // set up some basic lighting
+// TODO fix light positions
 const ambientLight = new THREE.AmbientLight(0x404040);
 scene.add(ambientLight);
 const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
 directionalLight.position.set(1, 1, 1);
 scene.add(directionalLight);
 
+// Add debug helpers to visualize the scene
+// const axesHelper = new THREE.AxesHelper(50);
+// scene.add(axesHelper);
+const gridHelper = new THREE.GridHelper(600, 60, 0x444444, 0x222222);
+scene.add(gridHelper);
+
+// timer used to track time between frames for smooth animation
 const timer = new THREE.Timer();
 timer.connect(document);
 
 const gameClock = new GameClock(new Date());
-
-const trainManager = new TrainManager(scene, gameClock);
+const trainCache = new TrainCache(new TrainDataProvider());
+const trainManager = new TrainManager(scene, gameClock, trainCache);
+trainManager
+	.newAnimation(
+		dayjs().hour(ANIMATION_START_HOURS).minute(0).second(0),
+		dayjs(),
+	)
+	.catch((err) => {
+		console.error("Failed to preload train data:", err);
+	});
 
 const infoElement = document.getElementById("info");
 
