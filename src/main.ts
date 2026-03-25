@@ -1,4 +1,5 @@
 import "./style.css";
+import * as dat from "dat.gui";
 import dayjs from "dayjs";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
@@ -7,8 +8,6 @@ import { GameClock } from "./core/GameClock";
 import { TrainCache } from "./core/TrainCache";
 import { TrainDataProvider } from "./core/TrainDataProvider";
 
-// TODO make this configurable in the UI, as well as the speed factor
-const ANIMATION_START_HOURS = 9;
 const scene = new THREE.Scene();
 
 // set up the camera
@@ -20,8 +19,8 @@ const camera = new THREE.PerspectiveCamera(
 );
 // Position camera to view the Dutch train region (Rijksdriehoek coordinates)
 // TODO fix camera position and orientation above Dutch boundaries
-camera.position.set(-250, 150, -250);
-camera.lookAt(150, 0, 150);
+camera.position.set(0, 150, 0);
+camera.lookAt(0, 0, 0);
 
 // set up the renderer and add it to the DOM
 const renderer = new THREE.WebGLRenderer();
@@ -60,14 +59,27 @@ timer.connect(document);
 const gameClock = new GameClock(new Date());
 const trainCache = new TrainCache(new TrainDataProvider());
 const trainManager = new TrainManager(scene, gameClock, trainCache);
-trainManager
-	.newAnimation(
-		dayjs().hour(ANIMATION_START_HOURS).minute(0).second(0),
-		dayjs(),
-	)
-	.catch((err) => {
-		console.error("Failed to preload train data:", err);
-	});
+
+const animationStartHours = 9;
+
+// Set up dat.gui controls
+const guiParams = {
+	animationStartHours,
+	startNewAnimation() {
+		trainManager
+			.newAnimation(
+				dayjs().hour(guiParams.animationStartHours).minute(0).second(0),
+				dayjs(),
+			)
+			.catch((err) => {
+				console.error("Failed to preload train data:", err);
+			});
+	},
+};
+
+const gui = new dat.GUI();
+gui.add(guiParams, "animationStartHours", 0, 23, 1).name("Start Time (hours)");
+gui.add(guiParams, "startNewAnimation").name("Start New Animation");
 
 const infoElement = document.getElementById("info");
 
