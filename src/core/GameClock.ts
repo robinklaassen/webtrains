@@ -10,6 +10,7 @@ const speedFactor = 450;
  * Internally uses dayjs objects for all timestamp operations.
  */
 export class GameClock {
+	// TODO clock should be able to start/stop, and not continue running when animation is not playing and/or timestamp exceeds the real current time
 	private timestamp: dayjs.Dayjs;
 	private listeners: ((timestamp: dayjs.Dayjs) => void)[] = [];
 	private lastTriggeredSecondMark: number;

@@ -14,6 +14,7 @@ export class Train {
 	alpha: number = 0;
 
 	constructor(position: THREE.Vector3, color: number = 0xffffff) {
+		// TODO use instanced mesh since the gemeotry is shared between all trains, and we can have many trains in the scene. This will require refactoring the TrainManager to manage a single InstancedMesh and update instance matrices instead of individual meshes.
 		const geometry = new THREE.SphereGeometry(sphereRadius);
 		const material = new THREE.MeshPhongMaterial({ color });
 		this.mesh = new THREE.Mesh(geometry, material);

@@ -1,7 +1,8 @@
 import dayjs from "dayjs";
-import * as THREE from "three";
+import type * as THREE from "three";
 import { Train } from "@/components/Train";
 import type { TrainPosition } from "@/models";
+import { vectorizeXY } from "@/utils";
 import type { GameClock } from "./GameClock";
 import type { TrainCache } from "./TrainCache";
 
@@ -30,7 +31,7 @@ export class TrainManager {
 		startTime: dayjs.Dayjs,
 		endTime: dayjs.Dayjs,
 	): Promise<void> {
-		await this.cache.preload(startTime, endTime);
+		await this.cache.ensureRangeLoaded(startTime, endTime);
 
 		const timestamp = dayjs(startTime);
 		this.onGameClockUpdate(timestamp); // Initialize trains based on first timestamp's data
@@ -60,10 +61,7 @@ export class TrainManager {
 			`Timestamp is ${timestamp.format("YYYY-MM-DD HH:mm:ss")}, with ${trainData.length} train positions`,
 		);
 		trainData.forEach((position: TrainPosition) => {
-			// divide by 1000 to get Rijksdriehoek coordinates in kilometers for better visualization scale
-			const positionVector = new THREE.Vector3(position.x, 0, position.y)
-				.divideScalar(1000)
-				.sub(new THREE.Vector3(155, 0, 463)); // center on Amersfoort
+			const positionVector = vectorizeXY(position.x, position.y);
 
 			// if the train does not exist yet, create it and add to scene
 			if (!this.trainsByID.has(position.id)) {

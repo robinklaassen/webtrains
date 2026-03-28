@@ -19,29 +19,74 @@ export class TrainCache {
 	}
 
 	/**
-	 * Preloads the cache with data for a given time range.
-	 * This should be called once during app initialization.
+	 * Ensures the cache is populated for the requested time range.
+	 * Only fetches gaps that are not already cached. On first call, fetches the entire range.
+	 * Subsequent calls are efficient - only fetching data before firstTimestamp or after lastTimestamp.
 	 * @param startTime - dayjs timestamp to start from
 	 * @param endTime - dayjs timestamp to end at
 	 */
-	async preload(startTime: dayjs.Dayjs, endTime: dayjs.Dayjs): Promise<void> {
-		console.log(
-			`Loading train data for a time span of ${endTime.diff(startTime, "minute")} minutes`,
-		);
-		const data = await this.dataProvider.fetchFromAPI(
-			startTime.toISOString(),
-			endTime.toISOString(),
-		);
-		console.log(`Retrieved ${data.length} train records from API`);
+	async ensureRangeLoaded(
+		startTime: dayjs.Dayjs,
+		endTime: dayjs.Dayjs,
+	): Promise<void> {
+		// Determine what needs to be fetched
+		const fetchRanges: Array<{ start: dayjs.Dayjs; end: dayjs.Dayjs }> = [];
 
-		// Populate cache with data organized by 10-second marks
+		if (this.firstTimestamp === null || this.lastTimestamp === null) {
+			// Cache is empty - fetch entire range
+			fetchRanges.push({ start: startTime, end: endTime });
+			console.log(
+				`Loading train data for a time span of ${endTime.diff(startTime, "minute")} minutes (initial load)`,
+			);
+		} else {
+			// Cache exists - identify gaps
+			if (startTime.isBefore(this.firstTimestamp)) {
+				fetchRanges.push({ start: startTime, end: this.firstTimestamp });
+				console.log(
+					`Loading train data for gap before: ${this.firstTimestamp.diff(startTime, "minute")} minutes`,
+				);
+			}
+
+			if (endTime.isAfter(this.lastTimestamp)) {
+				fetchRanges.push({ start: this.lastTimestamp, end: endTime });
+				console.log(
+					`Loading train data for gap after: ${endTime.diff(this.lastTimestamp, "minute")} minutes`,
+				);
+			}
+		}
+
+		// Fetch all identified gaps
+		let totalRecords = 0;
+		for (const range of fetchRanges) {
+			const data = await this.dataProvider.fetchFromAPI(
+				range.start.toISOString(),
+				range.end.toISOString(),
+			);
+			totalRecords += data.length;
+
+			// Merge into cache
+			this.mergeDataIntoCache(data);
+		}
+
+		console.log(`Retrieved ${totalRecords} train records from API`);
+	}
+
+	/**
+	 * Merges fetched data into the cache and updates boundaries.
+	 * @param data - Array of train records to merge
+	 */
+	private mergeDataIntoCache(data: TrainRecord[]): void {
 		data.forEach((record) => {
 			const position = this.transformToPosition(record);
 			const normalizedTimestamp = this.normalizeTimestamp(record.timestamp);
-			this.cache.set(normalizedTimestamp, [
-				...(this.cache.get(normalizedTimestamp) || []),
-				position,
-			]);
+			if (!this.cache.has(normalizedTimestamp)) {
+				this.cache.set(normalizedTimestamp, []);
+			}
+			const positions = this.cache.get(normalizedTimestamp) ?? [];
+			// Avoid duplicates
+			if (!positions.some((p) => p.id === position.id)) {
+				positions.push(position);
+			}
 		});
 
 		// Update boundaries based on actual data
@@ -49,8 +94,19 @@ export class TrainCache {
 			const timestamps = data
 				.map((r) => dayjs(r.timestamp))
 				.sort((a, b) => a.valueOf() - b.valueOf());
-			this.firstTimestamp = timestamps[0];
-			this.lastTimestamp = timestamps[timestamps.length - 1];
+
+			if (
+				this.firstTimestamp === null ||
+				timestamps[0].isBefore(this.firstTimestamp)
+			) {
+				this.firstTimestamp = timestamps[0];
+			}
+			if (
+				this.lastTimestamp === null ||
+				timestamps[timestamps.length - 1].isAfter(this.lastTimestamp)
+			) {
+				this.lastTimestamp = timestamps[timestamps.length - 1];
+			}
 		}
 	}
 
@@ -125,7 +181,7 @@ export class TrainCache {
 	 */
 	private async performExtension(timestamp: dayjs.Dayjs): Promise<void> {
 		if (this.firstTimestamp === null || this.lastTimestamp === null) {
-			// Cache is empty - shouldn't happen after preload, but be safe
+			// Cache is empty - shouldn't happen after ensureRangeLoaded, but be safe
 			return;
 		}
 
@@ -152,31 +208,7 @@ export class TrainCache {
 		);
 
 		// Merge into cache
-		data.forEach((record) => {
-			const position = this.transformToPosition(record);
-			const normalizedTimestamp = this.normalizeTimestamp(record.timestamp);
-			if (!this.cache.has(normalizedTimestamp)) {
-				this.cache.set(normalizedTimestamp, []);
-			}
-			const positions = this.cache.get(normalizedTimestamp) ?? [];
-			// Avoid duplicates
-			if (!positions.some((p) => p.id === position.id)) {
-				positions.push(position);
-			}
-		});
-
-		// Update boundaries
-		if (data.length > 0) {
-			const timestamps = data
-				.map((r) => dayjs(r.timestamp))
-				.sort((a, b) => a.valueOf() - b.valueOf());
-			if (timestamps[0].isBefore(this.firstTimestamp)) {
-				this.firstTimestamp = timestamps[0];
-			}
-			if (timestamps[timestamps.length - 1].isAfter(this.lastTimestamp)) {
-				this.lastTimestamp = timestamps[timestamps.length - 1];
-			}
-		}
+		this.mergeDataIntoCache(data);
 	}
 
 	/**
