@@ -10,10 +10,10 @@ const speedFactor = 450;
  * Internally uses dayjs objects for all timestamp operations.
  */
 export class GameClock {
-	// TODO clock should be able to start/stop, and not continue running when animation is not playing and/or timestamp exceeds the real current time
 	private timestamp: dayjs.Dayjs;
 	private listeners: ((timestamp: dayjs.Dayjs) => void)[] = [];
 	private lastTriggeredSecondMark: number;
+	private isRunning: boolean = false;
 
 	constructor(timestamp: Date) {
 		this.timestamp = dayjs(timestamp);
@@ -23,6 +23,14 @@ export class GameClock {
 	setTimestamp(newTimestamp: dayjs.Dayjs) {
 		this.timestamp = newTimestamp;
 		this.lastTriggeredSecondMark = this.getSecondMark();
+	}
+
+	start() {
+		this.isRunning = true;
+	}
+
+	stop() {
+		this.isRunning = false;
 	}
 
 	private getSecondMark(): number {
@@ -36,6 +44,7 @@ export class GameClock {
 
 	// Called from the render loop
 	incrementTime(deltaTime: number) {
+		if (!this.isRunning) return;
 		this.timestamp = this.timestamp.add(deltaTime * speedFactor, "second");
 		this.checkSecondMarkPassed();
 	}

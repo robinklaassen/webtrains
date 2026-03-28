@@ -90,15 +90,13 @@ function animate() {
 }
 
 function render() {
-	// TODO stop clock update loop when animation is not playing
 	const deltaTime = timer.getDelta();
+	trainManager.update(deltaTime);
 	gameClock.incrementTime(deltaTime);
 
 	if (infoElement) {
 		infoElement.textContent = gameClock.getFormattedDateTime();
 	}
-
-	trainManager.update(deltaTime);
 
 	renderer.render(scene, camera);
 }

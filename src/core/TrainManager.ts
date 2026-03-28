@@ -12,6 +12,7 @@ export class TrainManager {
 	isPlaying: boolean = false;
 	gameClock: GameClock;
 	cache: TrainCache;
+	animationEndTime: dayjs.Dayjs = dayjs();
 
 	constructor(scene: THREE.Scene, gameClock: GameClock, cache: TrainCache) {
 		this.scene = scene;
@@ -31,11 +32,13 @@ export class TrainManager {
 		startTime: dayjs.Dayjs,
 		endTime: dayjs.Dayjs,
 	): Promise<void> {
+		this.animationEndTime = endTime;
 		await this.cache.ensureRangeLoaded(startTime, endTime);
 
 		const timestamp = dayjs(startTime);
 		this.onGameClockUpdate(timestamp); // Initialize trains based on first timestamp's data
 		this.gameClock.setTimestamp(timestamp); // Reset game clock so animation starts from the beginning of the preloaded data
+		this.gameClock.start(); // Start the game clock to begin the animation
 		this.isPlaying = true;
 	}
 
@@ -56,10 +59,22 @@ export class TrainManager {
 	private onGameClockUpdate(timestamp: dayjs.Dayjs): void {
 		if (!this.isPlaying) return;
 
+		if (timestamp.valueOf() >= this.animationEndTime.valueOf()) {
+			this.gameClock.stop();
+			this.isPlaying = false;
+			console.log("Animation ended");
+			return;
+		}
+
 		const trainData = this.cache.getTrainsAtTimestamp(timestamp);
 		console.debug(
 			`Timestamp is ${timestamp.format("YYYY-MM-DD HH:mm:ss")}, with ${trainData.length} train positions`,
 		);
+
+		this.updateTrainTargets(trainData);
+	}
+
+	private updateTrainTargets(trainData: TrainPosition[]) {
 		trainData.forEach((position: TrainPosition) => {
 			const positionVector = vectorizeXY(position.x, position.y);
 
