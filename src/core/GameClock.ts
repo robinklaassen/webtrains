@@ -3,7 +3,7 @@ import utc from "dayjs/plugin/utc";
 
 dayjs.extend(utc);
 
-const speedFactor = 450;
+const DEFAULT_SPEED_FACTOR = 450;
 
 /**
  * Manager for the in-game time, triggers events every 10 second mark of the timestamp.
@@ -43,7 +43,7 @@ export class GameClock {
 	}
 
 	// Called from the render loop
-	incrementTime(deltaTime: number) {
+	incrementTime(deltaTime: number, speedFactor: number = DEFAULT_SPEED_FACTOR) {
 		if (!this.isRunning) return;
 		this.timestamp = this.timestamp.add(deltaTime * speedFactor, "second");
 		this.checkSecondMarkPassed();

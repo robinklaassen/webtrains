@@ -11,13 +11,13 @@ export class TrainManager {
 	trainsByID: Map<number, Train> = new Map();
 	isPlaying: boolean = false;
 	gameClock: GameClock;
-	cache: TrainCache;
+	trainCache: TrainCache;
 	animationEndTime: dayjs.Dayjs = dayjs();
 
 	constructor(scene: THREE.Scene, gameClock: GameClock, cache: TrainCache) {
 		this.scene = scene;
 		this.gameClock = gameClock;
-		this.cache = cache;
+		this.trainCache = cache;
 		this.gameClock.addEventListener((timestamp) =>
 			this.onGameClockUpdate(timestamp),
 		);
@@ -33,7 +33,7 @@ export class TrainManager {
 		endTime: dayjs.Dayjs,
 	): Promise<void> {
 		this.animationEndTime = endTime;
-		await this.cache.ensureRangeLoaded(startTime, endTime);
+		await this.trainCache.ensureRangeLoaded(startTime, endTime);
 
 		const timestamp = dayjs(startTime);
 		this.onGameClockUpdate(timestamp); // Initialize trains based on first timestamp's data
@@ -66,7 +66,7 @@ export class TrainManager {
 			return;
 		}
 
-		const trainData = this.cache.getTrainsAtTimestamp(timestamp);
+		const trainData = this.trainCache.getTrainsAtTimestamp(timestamp);
 		console.debug(
 			`Timestamp is ${timestamp.format("YYYY-MM-DD HH:mm:ss")}, with ${trainData.length} train positions`,
 		);

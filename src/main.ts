@@ -60,26 +60,24 @@ const gameClock = new GameClock(new Date());
 const trainCache = new TrainCache(new TrainDataProvider());
 const trainManager = new TrainManager(scene, gameClock, trainCache);
 
-const animationStartHours = 9;
+const animationStartHours = dayjs().hour() - 1; // default to 1 hour ago, can be changed via dat.gui
+const clockSpeedFactor = 450; // how much faster the in-game time should run compared to real time, can be changed via dat.gui in the future
 
 // Set up dat.gui controls
-// TODO add clock speed factor
 const guiParams = {
 	animationStartHours,
+	clockSpeedFactor,
 	startNewAnimation() {
-		trainManager
-			.newAnimation(
-				dayjs().hour(guiParams.animationStartHours).minute(0).second(0),
-				dayjs(),
-			)
-			.catch((err) => {
-				console.error("Failed to preload train data:", err);
-			});
+		trainManager.newAnimation(
+			dayjs().hour(guiParams.animationStartHours).minute(0).second(0),
+			dayjs(),
+		);
 	},
 };
 
 const gui = new dat.GUI();
 gui.add(guiParams, "animationStartHours", 0, 23, 1).name("Start Time (hours)");
+gui.add(guiParams, "clockSpeedFactor", 1, 1000, 1).name("Clock Speed Factor");
 gui.add(guiParams, "startNewAnimation").name("Start New Animation");
 
 const infoElement = document.getElementById("info");
@@ -92,7 +90,7 @@ function animate() {
 function render() {
 	const deltaTime = timer.getDelta();
 	trainManager.update(deltaTime);
-	gameClock.incrementTime(deltaTime);
+	gameClock.incrementTime(deltaTime, guiParams.clockSpeedFactor);
 
 	if (infoElement) {
 		infoElement.textContent = gameClock.getFormattedDateTime();
