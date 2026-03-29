@@ -8,6 +8,7 @@ import { GameClock } from "./core/GameClock";
 import { TrainCache } from "./core/TrainCache";
 import { TrainDataProvider } from "./core/TrainDataProvider";
 
+// TODO separate scaffolding (scene, camera, renderer setup) from the main application logic (managing game clock, train manager, etc.) for better maintainability and readability
 const scene = new THREE.Scene();
 
 // set up the camera
@@ -43,7 +44,7 @@ new OrbitControls(camera, renderer.domElement);
 const ambientLight = new THREE.AmbientLight(0x404040);
 scene.add(ambientLight);
 const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-directionalLight.position.set(1, 1, 1);
+directionalLight.position.set(150, 150, 150);
 scene.add(directionalLight);
 
 // Add debug helpers to visualize the scene
@@ -80,6 +81,7 @@ gui.add(guiParams, "animationStartHours", 0, 23, 1).name("Start Time (hours)");
 gui.add(guiParams, "clockSpeedFactor", 1, 1000, 1).name("Clock Speed Factor");
 gui.add(guiParams, "startNewAnimation").name("Start New Animation");
 
+// TODO info element now only contains ingame time, add a status element to the UI to show loading, playing, stopped etc. and maybe current ingame train count
 const infoElement = document.getElementById("info");
 
 function animate() {

@@ -6,6 +6,9 @@ import { vectorizeXY } from "@/utils";
 import type { GameClock } from "./GameClock";
 import type { TrainCache } from "./TrainCache";
 
+// Amount of seconds after train with no updates will be removed
+const DESTROY_TRAIN_AFTER_SECONDS = 60;
+
 export class TrainManager {
 	scene: THREE.Scene;
 	trainsByID: Map<number, Train> = new Map();
@@ -47,7 +50,7 @@ export class TrainManager {
 		if (!this.isPlaying) return;
 
 		this.trainsByID.forEach((train) => {
-			train.updatePosition(deltaTime);
+			train.update(deltaTime);
 		});
 	}
 
@@ -71,31 +74,54 @@ export class TrainManager {
 			`Timestamp is ${timestamp.format("YYYY-MM-DD HH:mm:ss")}, with ${trainData.length} train positions`,
 		);
 
-		this.updateTrainTargets(trainData);
+		this.updateTrainTargets(trainData, timestamp);
+		this.destroyInactiveTrains(timestamp);
 	}
 
-	private updateTrainTargets(trainData: TrainPosition[]) {
+	private updateTrainTargets(
+		trainData: TrainPosition[],
+		timestamp: dayjs.Dayjs,
+	) {
 		trainData.forEach((position: TrainPosition) => {
 			const positionVector = vectorizeXY(position.x, position.y);
 
 			// if the train does not exist yet, create it and add to scene
 			if (!this.trainsByID.has(position.id)) {
-				this.createTrain(position.id, positionVector);
+				this.createTrain(position.id, positionVector, timestamp);
 				return;
 			}
 
 			// if the train does exist, update its target position
 			const train = this.trainsByID.get(position.id);
-			train?.updateTarget(positionVector);
-
-			// TODO handle train removals
+			train?.updateTarget(positionVector, timestamp);
 		});
 	}
 
-	private createTrain(id: number, position: THREE.Vector3): Train {
-		const train = new Train(position, 0xff0000 + Math.random() * 0xffffff);
+	private createTrain(
+		id: number,
+		position: THREE.Vector3,
+		timestamp: dayjs.Dayjs = dayjs(),
+	): Train {
+		const train = new Train(
+			position,
+			0xff0000 + Math.random() * 0xffffff,
+			timestamp,
+		);
 		this.scene.add(train.mesh);
 		this.trainsByID.set(id, train);
 		return train;
+	}
+
+	private destroyInactiveTrains(timestamp: dayjs.Dayjs) {
+		this.trainsByID.forEach((train, id) => {
+			if (
+				timestamp.diff(train.lastUpdateTimestamp, "second") >=
+				DESTROY_TRAIN_AFTER_SECONDS
+			) {
+				train.destroy();
+				this.trainsByID.delete(id);
+				console.debug(`Train ${id} destroyed due to inactivity`);
+			}
+		});
 	}
 }

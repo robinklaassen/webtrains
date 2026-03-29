@@ -1,3 +1,4 @@
+import dayjs from "dayjs";
 import * as THREE from "three";
 
 const sphereRadius = 1;
@@ -13,7 +14,14 @@ export class Train {
 	target: THREE.Vector3;
 	alpha: number = 0;
 
-	constructor(position: THREE.Vector3, color: number = 0xffffff) {
+	// last ingame timestamp when this train received a new target position
+	lastUpdateTimestamp: dayjs.Dayjs;
+
+	constructor(
+		position: THREE.Vector3,
+		color: number = 0xffffff,
+		timestamp: dayjs.Dayjs = dayjs(),
+	) {
 		// TODO use instanced mesh since the gemeotry is shared between all trains, and we can have many trains in the scene. This will require refactoring the TrainManager to manage a single InstancedMesh and update instance matrices instead of individual meshes.
 		const geometry = new THREE.SphereGeometry(sphereRadius);
 		const material = new THREE.MeshPhongMaterial({ color });
@@ -21,13 +29,16 @@ export class Train {
 		this.mesh.position.copy(position);
 		this.origin = position.clone();
 		this.target = position.clone();
+		this.lastUpdateTimestamp = timestamp;
 	}
 
 	/**
 	 * Set a new target position for the train. The train will move towards this target in the update loop of the TrainManager.
 	 * @param newTarget - The new target position.
+	 * @param timestamp - The timestamp for the target position.
 	 */
-	updateTarget(newTarget: THREE.Vector3) {
+	updateTarget(newTarget: THREE.Vector3, timestamp: dayjs.Dayjs) {
+		this.lastUpdateTimestamp = timestamp;
 		this.mesh.position.copy(newTarget); // temporarily removed smoothing animation
 		// this.origin.copy(this.mesh.position);
 		// this.target.copy(newTarget);
@@ -38,10 +49,22 @@ export class Train {
 	 * Update the train's position based on the interpolation factor.
 	 * @param delta interpolation factor, will be added to this train's alpha
 	 */
-	updatePosition(delta: number) {
+	update(delta: number) {
 		delta; // Currently not used since we directly set the position in updateTarget, but can be re-enabled for smoother movement
 		// this.alpha += delta;
 		// this.alpha = Math.min(this.alpha, 1); // Clamp to [0, 1] to prevent extrapolation past target
 		// this.mesh.position.lerpVectors(this.origin, this.target, this.alpha);
+	}
+
+	/**
+	 * Clean up resources used by this train. Should be called when the train is removed from the scene to prevent memory leaks.
+	 */
+	destroy() {
+		this.mesh.geometry.dispose();
+		if (Array.isArray(this.mesh.material)) {
+			this.mesh.material.forEach((material) => void material.dispose());
+		} else {
+			this.mesh.material.dispose();
+		}
 	}
 }
