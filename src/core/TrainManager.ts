@@ -10,12 +10,13 @@ import type { TrainCache } from "./TrainCache";
 const DESTROY_TRAIN_AFTER_SECONDS = 60;
 
 export class TrainManager {
-	scene: THREE.Scene;
-	trainsByID: Map<number, Train> = new Map();
-	isPlaying: boolean = false;
-	gameClock: GameClock;
-	trainCache: TrainCache;
-	animationEndTime: dayjs.Dayjs = dayjs();
+	private scene: THREE.Scene;
+	private trainsByID: Map<number, Train> = new Map();
+	private isPlaying: boolean = false;
+	private gameClock: GameClock;
+	private trainCache: TrainCache;
+	private animationEndTime: dayjs.Dayjs = dayjs();
+	status: string = "stopped";
 
 	constructor(scene: THREE.Scene, gameClock: GameClock, cache: TrainCache) {
 		this.scene = scene;
@@ -36,6 +37,7 @@ export class TrainManager {
 		endTime: dayjs.Dayjs,
 	): Promise<void> {
 		this.animationEndTime = endTime;
+		this.status = "loading";
 		await this.trainCache.ensureRangeLoaded(startTime, endTime);
 
 		const timestamp = dayjs(startTime);
@@ -43,6 +45,7 @@ export class TrainManager {
 		this.gameClock.setTimestamp(timestamp); // Reset game clock so animation starts from the beginning of the preloaded data
 		this.gameClock.start(); // Start the game clock to begin the animation
 		this.isPlaying = true;
+		this.status = "playing";
 	}
 
 	// Updates every frame from the render loop
@@ -52,6 +55,10 @@ export class TrainManager {
 		this.trainsByID.forEach((train) => {
 			train.update(deltaTime, speedFactor);
 		});
+	}
+
+	getTrainCount(): number {
+		return this.trainsByID.size;
 	}
 
 	/**
@@ -65,6 +72,8 @@ export class TrainManager {
 		if (timestamp.valueOf() >= this.animationEndTime.valueOf()) {
 			this.gameClock.stop();
 			this.isPlaying = false;
+			this.status = "stopped";
+
 			console.log("Animation ended");
 			return;
 		}

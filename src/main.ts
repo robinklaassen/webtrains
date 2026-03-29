@@ -19,7 +19,6 @@ const camera = new THREE.PerspectiveCamera(
 	10000,
 );
 // Position camera to view the Dutch train region (Rijksdriehoek coordinates)
-// TODO fix camera position and orientation above Dutch boundaries
 camera.position.set(0, 150, 0);
 camera.lookAt(0, 0, 0);
 
@@ -40,18 +39,17 @@ window.addEventListener("resize", () => {
 new OrbitControls(camera, renderer.domElement);
 
 // set up some basic lighting
-// TODO fix light positions
 const ambientLight = new THREE.AmbientLight(0x404040);
 scene.add(ambientLight);
 const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-directionalLight.position.set(150, 150, 150);
+directionalLight.position.set(-150, 150, -150); // light from top-left corner
 scene.add(directionalLight);
 
 // Add debug helpers to visualize the scene
-// const axesHelper = new THREE.AxesHelper(50);
-// scene.add(axesHelper);
-const gridHelper = new THREE.GridHelper(600, 60, 0x444444, 0x222222);
+const gridHelper = new THREE.GridHelper(300, 60, 0x444444, 0x222222);
 scene.add(gridHelper);
+// const axesHelper = new THREE.AxesHelper(150);
+// scene.add(axesHelper);
 
 // timer used to track time between frames for smooth animation
 const timer = new THREE.Timer();
@@ -81,8 +79,9 @@ gui.add(guiParams, "animationStartHours", 0, 23, 1).name("Start Time (hours)");
 gui.add(guiParams, "clockSpeedFactor", 1, 1000, 1).name("Clock Speed Factor");
 gui.add(guiParams, "startNewAnimation").name("Start New Animation");
 
-// TODO info element now only contains ingame time, add a status element to the UI to show loading, playing, stopped etc. and maybe current ingame train count
-const infoElement = document.getElementById("info");
+const clockElement = document.getElementById("clock");
+const statusElement = document.getElementById("status");
+const trainCountElement = document.getElementById("train-count");
 
 function animate() {
 	timer.update();
@@ -94,8 +93,16 @@ function render() {
 	trainManager.update(deltaTime, guiParams.clockSpeedFactor);
 	gameClock.incrementTime(deltaTime, guiParams.clockSpeedFactor);
 
-	if (infoElement) {
-		infoElement.textContent = gameClock.getFormattedDateTime();
+	if (clockElement) {
+		clockElement.textContent = gameClock.getFormattedDateTime();
+	}
+
+	if (statusElement) {
+		statusElement.textContent = `Status: ${trainManager.status}`;
+	}
+
+	if (trainCountElement) {
+		trainCountElement.textContent = `Train count: ${trainManager.getTrainCount()}`;
 	}
 
 	renderer.render(scene, camera);

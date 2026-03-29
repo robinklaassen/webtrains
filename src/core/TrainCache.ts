@@ -58,7 +58,7 @@ export class TrainCache {
 		// Fetch all identified gaps
 		let totalRecords = 0;
 		for (const range of fetchRanges) {
-			const data = await this.dataProvider.fetchFromAPI(
+			const data = await this.dataProvider.getTrainPositions(
 				range.start.toISOString(),
 				range.end.toISOString(),
 			);
@@ -202,7 +202,7 @@ export class TrainCache {
 		}
 
 		// Fetch the missing gap
-		const data = await this.dataProvider.fetchFromAPI(
+		const data = await this.dataProvider.getTrainPositions(
 			startToFetch.toISOString(),
 			endToFetch.toISOString(),
 		);

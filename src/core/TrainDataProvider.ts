@@ -12,7 +12,7 @@ export class TrainDataProvider {
 	 * @param end - ISO formatted end timestamp
 	 * @returns Promise resolving to an array of train records
 	 */
-	async fetchFromAPI(start: string, end: string): Promise<TrainRecord[]> {
+	async getTrainPositions(start: string, end: string): Promise<TrainRecord[]> {
 		const url = new URL(this.API_URL);
 		url.searchParams.append("start", start);
 		url.searchParams.append("end", end);
@@ -32,4 +32,6 @@ export class TrainDataProvider {
 
 		return response.json();
 	}
+
+	// TODO add method to fetch train types
 }

@@ -4,7 +4,7 @@ import * as THREE from "three";
 const sphereRadius = 1;
 
 /**
- * Represents a train in the 3D scene. Each train has a mesh (a sphere) and a target position it moves towards. The Train class provides a method to update the train's position based on new coordinates.
+ * Represents a train in the 3D scene.
  */
 export class Train {
 	mesh: THREE.Mesh;
