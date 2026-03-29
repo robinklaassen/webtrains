@@ -91,7 +91,7 @@ function animate() {
 
 function render() {
 	const deltaTime = timer.getDelta();
-	trainManager.update(deltaTime);
+	trainManager.update(deltaTime, guiParams.clockSpeedFactor);
 	gameClock.incrementTime(deltaTime, guiParams.clockSpeedFactor);
 
 	if (infoElement) {

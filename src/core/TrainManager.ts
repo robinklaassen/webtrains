@@ -46,11 +46,11 @@ export class TrainManager {
 	}
 
 	// Updates every frame from the render loop
-	update(deltaTime: number) {
+	update(deltaTime: number, speedFactor: number) {
 		if (!this.isPlaying) return;
 
 		this.trainsByID.forEach((train) => {
-			train.update(deltaTime);
+			train.update(deltaTime, speedFactor);
 		});
 	}
 

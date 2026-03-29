@@ -39,21 +39,19 @@ export class Train {
 	 */
 	updateTarget(newTarget: THREE.Vector3, timestamp: dayjs.Dayjs) {
 		this.lastUpdateTimestamp = timestamp;
-		this.mesh.position.copy(newTarget); // temporarily removed smoothing animation
-		// this.origin.copy(this.mesh.position);
-		// this.target.copy(newTarget);
-		// this.alpha = 0;
+		// this.mesh.position.copy(newTarget); // temporarily removed smoothing animation
+		this.origin.copy(this.mesh.position);
+		this.target.copy(newTarget);
+		this.alpha = 0;
 	}
 
-	/**
-	 * Update the train's position based on the interpolation factor.
-	 * @param delta interpolation factor, will be added to this train's alpha
-	 */
-	update(delta: number) {
-		delta; // Currently not used since we directly set the position in updateTarget, but can be re-enabled for smoother movement
-		// this.alpha += delta;
-		// this.alpha = Math.min(this.alpha, 1); // Clamp to [0, 1] to prevent extrapolation past target
-		// this.mesh.position.lerpVectors(this.origin, this.target, this.alpha);
+	// Updates every frame from the render loop
+	update(deltaTime: number, speedFactor: number) {
+		// delta is the ingame time passed since last frame divided by 10 seconds between every clock update timestamp
+		const delta = (deltaTime * speedFactor) / 10;
+		this.alpha += delta;
+		this.alpha = Math.min(this.alpha, 1); // Clamp to [0, 1] to prevent extrapolation past target
+		this.mesh.position.lerpVectors(this.origin, this.target, this.alpha);
 	}
 
 	/**
