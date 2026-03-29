@@ -1,5 +1,5 @@
 import dayjs from "dayjs";
-import type { TrainPosition, TrainRecord } from "@/models";
+import type { TrainPosition } from "@/models";
 import type { TrainDataProvider } from "./TrainDataProvider";
 
 /**
@@ -62,7 +62,10 @@ export class TrainCache {
 				range.start.toISOString(),
 				range.end.toISOString(),
 			);
-			totalRecords += data.length;
+			totalRecords += Array.from(data.values()).reduce(
+				(sum, positions) => sum + positions.length,
+				0,
+			);
 
 			// Merge into cache
 			this.mergeDataIntoCache(data);
@@ -73,26 +76,28 @@ export class TrainCache {
 
 	/**
 	 * Merges fetched data into the cache and updates boundaries.
-	 * @param data - Array of train records to merge
+	 * Data comes pre-keyed by normalized timestamp, so we store it directly.
+	 * @param data - Map of normalized ISO timestamp strings to TrainPosition arrays
 	 */
-	private mergeDataIntoCache(data: TrainRecord[]): void {
-		data.forEach((record) => {
-			const position = this.transformToPosition(record);
-			const normalizedTimestamp = this.normalizeTimestamp(record.timestamp);
-			if (!this.cache.has(normalizedTimestamp)) {
-				this.cache.set(normalizedTimestamp, []);
+	private mergeDataIntoCache(data: Map<string, TrainPosition[]>): void {
+		// Data is already keyed by normalized timestamp and contains TrainPosition objects
+		data.forEach((positions, timestampStr) => {
+			if (!this.cache.has(timestampStr)) {
+				this.cache.set(timestampStr, []);
 			}
-			const positions = this.cache.get(normalizedTimestamp) ?? [];
+			const cachedPositions = this.cache.get(timestampStr) ?? [];
 			// Avoid duplicates
-			if (!positions.some((p) => p.id === position.id)) {
-				positions.push(position);
-			}
+			positions.forEach((position) => {
+				if (!cachedPositions.some((p) => p.id === position.id)) {
+					cachedPositions.push(position);
+				}
+			});
 		});
 
 		// Update boundaries based on actual data
-		if (data.length > 0) {
-			const timestamps = data
-				.map((r) => dayjs(r.timestamp))
+		if (data.size > 0) {
+			const timestamps = Array.from(data.keys())
+				.map((key) => dayjs(key))
 				.sort((a, b) => a.valueOf() - b.valueOf());
 
 			if (
@@ -118,7 +123,7 @@ export class TrainCache {
 	 * @returns Array of train positions at that timestamp, or empty array if not cached
 	 */
 	getTrainsAtTimestamp(timestamp: dayjs.Dayjs): TrainPosition[] {
-		const timestampStr = this.normalizeTimestamp(timestamp.toISOString());
+		const timestampStr = timestamp.format("YYYY-MM-DDTHH:mm:ss");
 		if (this.cache.has(timestampStr)) {
 			return this.cache.get(timestampStr) ?? [];
 		}
@@ -209,29 +214,6 @@ export class TrainCache {
 
 		// Merge into cache
 		this.mergeDataIntoCache(data);
-	}
-
-	/**
-	 * Normalizes a timestamp string by removing timezone information.
-	 * Ensures consistent cache keys regardless of API timezone format.
-	 * @param timestamp - ISO timestamp string (may include timezone)
-	 * @returns Timezone-naive ISO timestamp string (YYYY-MM-DDTHH:mm:ss)
-	 */
-	private normalizeTimestamp(timestamp: string): string {
-		return dayjs(timestamp).format("YYYY-MM-DDTHH:mm:ss");
-	}
-
-	/**
-	 * Transforms a TrainRecord into a TrainPosition by extracting only essential fields.
-	 * @param record - The full train record from the API
-	 * @returns A TrainPosition with only id, x, y coordinates
-	 */
-	private transformToPosition(record: TrainRecord): TrainPosition {
-		return {
-			id: record.id,
-			x: record.x,
-			y: record.y,
-		};
 	}
 
 	/**

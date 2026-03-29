@@ -1,8 +1,7 @@
-import type { TrainRecord } from "@/models";
+import type { TrainPosition } from "@/models";
 
 export class TrainDataProvider {
-	// TODO switch to keyed locations endpoint to minimize data transfer and processing
-	private readonly API_URL = "https://aid2.robinklaassen.com/trains/locations";
+	private readonly API_BASE_URL = "https://aid.robinklaassen.com";
 	private readonly API_KEY = import.meta.env.VITE_AID_API_KEY;
 
 	/**
@@ -12,8 +11,11 @@ export class TrainDataProvider {
 	 * @param end - ISO formatted end timestamp
 	 * @returns Promise resolving to an array of train records
 	 */
-	async getTrainPositions(start: string, end: string): Promise<TrainRecord[]> {
-		const url = new URL(this.API_URL);
+	async getTrainPositions(
+		start: string,
+		end: string,
+	): Promise<Map<string, TrainPosition[]>> {
+		const url = new URL("/trains/locations-keyed", this.API_BASE_URL);
 		url.searchParams.append("start", start);
 		url.searchParams.append("end", end);
 
@@ -30,7 +32,9 @@ export class TrainDataProvider {
 			);
 		}
 
-		return response.json();
+		const data = await response.json();
+		// Convert plain object to Map
+		return new Map(Object.entries(data));
 	}
 
 	// TODO add method to fetch train types
