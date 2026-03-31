@@ -42,7 +42,8 @@ export class TrainManager {
 		await this.trainCache.ensureRangeLoaded(startTime, endTime);
 		this.trainTypes = await this.trainCache.dataProvider.getTrainTypes();
 
-		// TODO destroy all trains here?
+		this.destroyAllTrains();
+
 		const timestamp = dayjs(startTime);
 		this.onGameClockUpdate(timestamp); // Initialize trains based on first timestamp's data
 		this.gameClock.setTimestamp(timestamp); // Reset game clock so animation starts from the beginning of the preloaded data
@@ -137,5 +138,12 @@ export class TrainManager {
 				console.debug(`Train ${id} destroyed due to inactivity`);
 			}
 		});
+	}
+
+	private destroyAllTrains() {
+		this.trainsByID.forEach((train) => {
+			train.destroy();
+		});
+		this.trainsByID.clear();
 	}
 }
