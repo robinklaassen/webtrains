@@ -12,6 +12,7 @@ const DESTROY_TRAIN_AFTER_SECONDS = 60;
 export class TrainManager {
 	private scene: THREE.Scene;
 	private trainsByID: Map<number, Train> = new Map();
+	private trainTypes: Map<number, string> = new Map();
 	private isPlaying: boolean = false;
 	private gameClock: GameClock;
 	private trainCache: TrainCache;
@@ -39,7 +40,9 @@ export class TrainManager {
 		this.animationEndTime = endTime;
 		this.status = "loading";
 		await this.trainCache.ensureRangeLoaded(startTime, endTime);
+		this.trainTypes = await this.trainCache.dataProvider.getTrainTypes();
 
+		// TODO destroy all trains here?
 		const timestamp = dayjs(startTime);
 		this.onGameClockUpdate(timestamp); // Initialize trains based on first timestamp's data
 		this.gameClock.setTimestamp(timestamp); // Reset game clock so animation starts from the beginning of the preloaded data
@@ -85,6 +88,8 @@ export class TrainManager {
 
 		this.updateTrainTargets(trainData, timestamp);
 		this.destroyInactiveTrains(timestamp);
+
+		// TODO add slowdown effect near end of animation by changing game clock speed
 	}
 
 	private updateTrainTargets(
@@ -113,7 +118,7 @@ export class TrainManager {
 	): Train {
 		const train = new Train(
 			position,
-			0xff0000 + Math.random() * 0xffffff,
+			this.trainTypes.get(id) ?? "Unknown",
 			timestamp,
 		);
 		this.scene.add(train.mesh);

@@ -37,5 +37,27 @@ export class TrainDataProvider {
 		return new Map(Object.entries(data));
 	}
 
-	// TODO add method to fetch train types
+	async getTrainTypes(): Promise<Map<number, string>> {
+		const url = new URL("/trains/types/json", this.API_BASE_URL);
+
+		const response = await fetch(url.toString(), {
+			headers: {
+				"x-api-key": this.API_KEY,
+			},
+		});
+
+		if (!response.ok) {
+			throw new Error(
+				`Failed to fetch train types: ${response.status} ${response.statusText}`,
+			);
+		}
+
+		const data = await response.json();
+		return new Map(
+			Object.entries(data).map(([key, value]) => [
+				Number(key),
+				value as string,
+			]),
+		);
+	}
 }

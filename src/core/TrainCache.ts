@@ -11,7 +11,7 @@ export class TrainCache {
 	private cache: Map<string, TrainPosition[]> = new Map();
 	private firstTimestamp: dayjs.Dayjs | null = null;
 	private lastTimestamp: dayjs.Dayjs | null = null;
-	private dataProvider: TrainDataProvider;
+	dataProvider: TrainDataProvider;
 	private extensionPromise: Promise<void> | null = null;
 
 	constructor(dataProvider: TrainDataProvider) {
