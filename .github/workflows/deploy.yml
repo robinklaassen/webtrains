@@ -23,6 +23,8 @@ jobs:
         run: npm ci
 
       - name: Build with Vite
+        env:
+          VITE_AID_API_KEY: ${{ secrets.VITE_AID_API_KEY }}
         run: npm run build
 
       - name: Deploy to VPS
