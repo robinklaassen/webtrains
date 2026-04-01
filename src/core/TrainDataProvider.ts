@@ -3,6 +3,8 @@ import type { TrainPosition } from "@/models";
 export class TrainDataProvider {
 	private readonly API_BASE_URL = "https://aid.robinklaassen.com";
 	private readonly API_KEY = import.meta.env.VITE_AID_API_KEY;
+	private readonly TIMEOUT_MS = 30_000;
+	private readonly MAX_RETRIES = 3;
 
 	/**
 	 * Fetches train locations for the given time range from the API.
@@ -19,45 +21,56 @@ export class TrainDataProvider {
 		url.searchParams.append("start", start);
 		url.searchParams.append("end", end);
 
-		// TODO add timeout and retry logic for robustness
-		const response = await fetch(url.toString(), {
-			headers: {
-				"x-api-key": this.API_KEY,
-			},
-		});
-
-		if (!response.ok) {
-			throw new Error(
-				`Failed to fetch train locations: ${response.status} ${response.statusText}`,
-			);
-		}
-
-		const data = await response.json();
-		// Convert plain object to Map
-		return new Map(Object.entries(data));
+		const data = await this.fetchWithRetry(url.toString(), "train locations");
+		return new Map(Object.entries(data as Record<string, TrainPosition[]>));
 	}
 
 	async getTrainTypes(): Promise<Map<number, string>> {
 		const url = new URL("/trains/types/json", this.API_BASE_URL);
+		const data = await this.fetchWithRetry(url.toString(), "train types");
+		return new Map(
+			Object.entries(data as Record<string, string>).map(([key, value]) => [
+				Number(key),
+				value,
+			]),
+		);
+	}
 
-		const response = await fetch(url.toString(), {
-			headers: {
-				"x-api-key": this.API_KEY,
-			},
-		});
+	/**
+	 * Fetches data from the API with timeout and retry logic.
+	 */
+	private async fetchWithRetry(url: string, label: string): Promise<unknown> {
+		let lastError: Error | undefined;
 
-		if (!response.ok) {
-			throw new Error(
-				`Failed to fetch train types: ${response.status} ${response.statusText}`,
-			);
+		for (let attempt = 1; attempt <= this.MAX_RETRIES; attempt++) {
+			try {
+				const controller = new AbortController();
+				const timeoutId = setTimeout(() => controller.abort(), this.TIMEOUT_MS);
+
+				try {
+					const response = await fetch(url, {
+						headers: { "x-api-key": this.API_KEY },
+						signal: controller.signal,
+					});
+
+					if (!response.ok) {
+						throw new Error(`${response.status} ${response.statusText}`);
+					}
+
+					return await response.json();
+				} finally {
+					clearTimeout(timeoutId);
+				}
+			} catch (error) {
+				lastError = error instanceof Error ? error : new Error(String(error));
+				if (attempt < this.MAX_RETRIES) {
+					await new Promise((resolve) => setTimeout(resolve, 100 * attempt));
+				}
+			}
 		}
 
-		const data = await response.json();
-		return new Map(
-			Object.entries(data).map(([key, value]) => [
-				Number(key),
-				value as string,
-			]),
+		throw new Error(
+			`Failed to fetch ${label}: ${lastError?.message} (after ${this.MAX_RETRIES} retries)`,
 		);
 	}
 }
