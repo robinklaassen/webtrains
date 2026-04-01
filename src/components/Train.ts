@@ -68,7 +68,7 @@ export class Train {
 	/**
 	 * Clean up resources used by this train. Should be called when the train is removed from the scene to prevent memory leaks.
 	 */
-	destroy() {
+	destroyResources() {
 		this.mesh.geometry.dispose();
 		if (Array.isArray(this.mesh.material)) {
 			this.mesh.material.forEach((material) => void material.dispose());

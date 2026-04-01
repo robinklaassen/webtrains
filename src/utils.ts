@@ -1,3 +1,4 @@
+import dayjs from "dayjs";
 import * as THREE from "three";
 
 export function getRandomPosition(): THREE.Vector3 {
@@ -12,4 +13,9 @@ export function vectorizeXY(x: number, y: number): THREE.Vector3 {
 		.divideScalar(1000) // RDS coordinates to kilometers
 		.sub(new THREE.Vector3(155, 0, -463)); // center on Amersfoort
 	// NOTE z axis points down in current orientation, that's why we negate the value
+}
+
+export function roundToNearestTenSeconds(timestamp: dayjs.Dayjs): dayjs.Dayjs {
+	const roundedTimestamp = Math.round(timestamp.unix() / 10) * 10;
+	return dayjs.unix(roundedTimestamp);
 }

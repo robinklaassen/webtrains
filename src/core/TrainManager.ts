@@ -46,7 +46,7 @@ export class TrainManager {
 
 		const timestamp = dayjs(startTime);
 		this.onGameClockUpdate(timestamp); // Initialize trains based on first timestamp's data
-		this.gameClock.setTimestamp(timestamp); // Reset game clock so animation starts from the beginning of the preloaded data
+		this.gameClock.resetTimestamp(timestamp); // Reset game clock so animation starts from the beginning of the preloaded data
 		this.gameClock.start(); // Start the game clock to begin the animation
 		this.isPlaying = true;
 		this.status = "playing";
@@ -133,7 +133,8 @@ export class TrainManager {
 				timestamp.diff(train.lastUpdateTimestamp, "second") >=
 				DESTROY_TRAIN_AFTER_SECONDS
 			) {
-				train.destroy();
+				this.scene.remove(train.mesh);
+				train.destroyResources();
 				this.trainsByID.delete(id);
 				console.debug(`Train ${id} destroyed due to inactivity`);
 			}
@@ -142,7 +143,8 @@ export class TrainManager {
 
 	private destroyAllTrains() {
 		this.trainsByID.forEach((train) => {
-			train.destroy();
+			this.scene.remove(train.mesh);
+			train.destroyResources();
 		});
 		this.trainsByID.clear();
 	}

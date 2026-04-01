@@ -70,6 +70,7 @@ function render() {
 	uiManager.updateClock(gameClock.getFormattedDateTime());
 	uiManager.updateStatus(trainManager.status);
 	uiManager.updateTrainCount(trainManager.getTrainCount());
+	uiManager.updateSceneObjectCount(scene.children.length);
 
 	// Render
 	rendererSetup.render(scene, camera);

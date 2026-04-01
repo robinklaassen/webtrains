@@ -1,5 +1,6 @@
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
+import { roundToNearestTenSeconds } from "@/utils";
 
 dayjs.extend(utc);
 
@@ -10,19 +11,20 @@ const DEFAULT_SPEED_FACTOR = 450;
  * Internally uses dayjs objects for all timestamp operations.
  */
 export class GameClock {
-	private timestamp: dayjs.Dayjs;
-	private listeners: ((timestamp: dayjs.Dayjs) => void)[] = [];
-	private lastTriggeredSecondMark: number;
+	private currentTimestamp: dayjs.Dayjs;
+	private lastTriggeredTimestamp: dayjs.Dayjs;
 	private isRunning: boolean = false;
+	private listeners: ((timestamp: dayjs.Dayjs) => void)[] = [];
 
 	constructor(timestamp: Date) {
-		this.timestamp = dayjs(timestamp);
-		this.lastTriggeredSecondMark = this.getSecondMark();
+		const roundedTimestamp = roundToNearestTenSeconds(dayjs(timestamp));
+		this.currentTimestamp = roundedTimestamp;
+		this.lastTriggeredTimestamp = roundedTimestamp;
 	}
 
-	setTimestamp(newTimestamp: dayjs.Dayjs) {
-		this.timestamp = newTimestamp;
-		this.lastTriggeredSecondMark = this.getSecondMark();
+	resetTimestamp(timestamp: dayjs.Dayjs) {
+		this.currentTimestamp = timestamp;
+		this.lastTriggeredTimestamp = timestamp;
 	}
 
 	start() {
@@ -33,37 +35,25 @@ export class GameClock {
 		this.isRunning = false;
 	}
 
-	private getSecondMark(): number {
-		const seconds = this.timestamp.second();
-		return Math.floor(seconds / 10) * 10;
-	}
-
-	private getRoundedTimestamp(): dayjs.Dayjs {
-		return this.timestamp.second(this.lastTriggeredSecondMark);
-	}
-
 	// Called from the render loop
 	incrementTime(deltaTime: number, speedFactor: number = DEFAULT_SPEED_FACTOR) {
 		if (!this.isRunning) return;
-		this.timestamp = this.timestamp.add(deltaTime * speedFactor, "second");
-		this.checkSecondMarkPassed();
-	}
 
-	// Checks if we've passed a new 10-second mark and triggers listeners if so
-	checkSecondMarkPassed() {
-		const currentMark = this.getSecondMark();
-		if (currentMark !== this.lastTriggeredSecondMark) {
-			this.lastTriggeredSecondMark = currentMark;
-			const roundedTime = this.getRoundedTimestamp();
+		this.currentTimestamp = roundToNearestTenSeconds(
+			this.currentTimestamp.add(deltaTime * speedFactor, "second"),
+		);
+
+		if (this.currentTimestamp.isAfter(this.lastTriggeredTimestamp)) {
+			this.lastTriggeredTimestamp = this.currentTimestamp;
 			this.listeners.forEach((listener) => {
-				listener(roundedTime);
+				listener(this.currentTimestamp);
 			});
 		}
 	}
 
 	// Formatted timestamp for display in the UI
 	getFormattedDateTime(): string {
-		return this.timestamp.format("YYYY-MM-DD HH:mm");
+		return this.currentTimestamp.format("YYYY-MM-DD HH:mm");
 	}
 
 	addEventListener(listener: (timestamp: dayjs.Dayjs) => void) {

@@ -16,6 +16,24 @@ body {
 	border-radius: 5px;
 }
 
+#clock {
+	font-size: 18px;
+	font-weight: bold;
+	margin-bottom: 5px;
+}
+
+#status {
+	margin-bottom: 5px;
+}
+
+#train-count {
+	margin-bottom: 5px;
+}
+
+#mesh-count {
+	margin-bottom: 5px;
+}
+
 /* Position dat.gui panel in top right corner */
 .dg.ac {
 	position: fixed;
