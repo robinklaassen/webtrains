@@ -25,8 +25,14 @@ export class TrainDataProvider {
 		return new Map(Object.entries(data as Record<string, TrainPosition[]>));
 	}
 
-	async getTrainTypes(): Promise<Map<number, string>> {
+	async getTrainTypes(
+		start: string,
+		end: string,
+	): Promise<Map<number, string>> {
 		const url = new URL("/trains/types/json", this.API_BASE_URL);
+		url.searchParams.append("start", start);
+		url.searchParams.append("end", end);
+
 		const data = await this.fetchWithRetry(url.toString(), "train types");
 		return new Map(
 			Object.entries(data as Record<string, string>).map(([key, value]) => [

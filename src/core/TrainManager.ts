@@ -40,7 +40,10 @@ export class TrainManager {
 		this.animationEndTime = endTime;
 		this.status = "loading";
 		await this.trainCache.ensureRangeLoaded(startTime, endTime);
-		this.trainTypes = await this.trainCache.dataProvider.getTrainTypes();
+		this.trainTypes = await this.trainCache.dataProvider.getTrainTypes(
+			startTime.toISOString(),
+			endTime.toISOString(),
+		);
 
 		this.destroyAllTrains();
 
