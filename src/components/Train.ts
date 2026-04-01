@@ -1,9 +1,9 @@
 import dayjs from "dayjs";
 import * as THREE from "three";
 
-const sphereRadius = 1;
+const SPHERE_RADIUS = 1;
 
-const COLOR_Map: { [key: string]: number } = {
+const COLOR_MAP: { [key: string]: number } = {
 	SPR: 0xffff00, // yellow
 	IC: 0x0000ff, // blue
 	ARR: 0xff0000, // red
@@ -14,6 +14,30 @@ const COLOR_Map: { [key: string]: number } = {
  * Represents a train in the 3D scene.
  */
 export class Train {
+	// Shared resources across all train instances (Tier 1 & 2 optimization)
+	private static readonly sharedGeometry = new THREE.SphereGeometry(
+		SPHERE_RADIUS,
+		16, // width segments (reduced from 32 for Tier 2 optimization)
+		16, // height segments (reduced from 32 for Tier 2 optimization)
+	);
+	private static readonly materialCache = new Map<
+		number,
+		THREE.MeshPhongMaterial
+	>();
+
+	/**
+	 * Get or create a material for the given color.
+	 */
+	private static getMaterial(color: number): THREE.MeshPhongMaterial {
+		const existing = Train.materialCache.get(color);
+		if (existing) {
+			return existing;
+		}
+		const material = new THREE.MeshPhongMaterial({ color });
+		Train.materialCache.set(color, material);
+		return material;
+	}
+
 	mesh: THREE.Mesh;
 	type: string = "Unknown"; // TODO use enum for train types
 
@@ -30,13 +54,11 @@ export class Train {
 		type: string,
 		timestamp: dayjs.Dayjs = dayjs(),
 	) {
-		// TODO use instanced mesh since the gemeotry is shared between all trains, and we can have many trains in the scene. This will require refactoring the TrainManager to manage a single InstancedMesh and update instance matrices instead of individual meshes.
 		this.type = type;
-		const geometry = new THREE.SphereGeometry(sphereRadius);
-		const material = new THREE.MeshPhongMaterial({
-			color: COLOR_Map[type] ?? 0xffffff,
-		});
-		this.mesh = new THREE.Mesh(geometry, material);
+		const color = COLOR_MAP[type] ?? 0xffffff;
+
+		// Use shared geometry and cached material (Tier 1 & 2 optimization)
+		this.mesh = new THREE.Mesh(Train.sharedGeometry, Train.getMaterial(color));
 		this.mesh.position.copy(position);
 		this.origin = position.clone();
 		this.target = position.clone();
@@ -63,17 +85,5 @@ export class Train {
 		this.alpha += delta;
 		this.alpha = Math.min(this.alpha, 1); // Clamp to [0, 1] to prevent extrapolation past target
 		this.mesh.position.lerpVectors(this.origin, this.target, this.alpha);
-	}
-
-	/**
-	 * Clean up resources used by this train. Should be called when the train is removed from the scene to prevent memory leaks.
-	 */
-	destroyResources() {
-		this.mesh.geometry.dispose();
-		if (Array.isArray(this.mesh.material)) {
-			this.mesh.material.forEach((material) => void material.dispose());
-		} else {
-			this.mesh.material.dispose();
-		}
 	}
 }

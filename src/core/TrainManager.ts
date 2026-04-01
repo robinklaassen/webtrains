@@ -134,7 +134,6 @@ export class TrainManager {
 				DESTROY_TRAIN_AFTER_SECONDS
 			) {
 				this.scene.remove(train.mesh);
-				train.destroyResources();
 				this.trainsByID.delete(id);
 				console.debug(`Train ${id} destroyed due to inactivity`);
 			}
@@ -144,7 +143,6 @@ export class TrainManager {
 	private destroyAllTrains() {
 		this.trainsByID.forEach((train) => {
 			this.scene.remove(train.mesh);
-			train.destroyResources();
 		});
 		this.trainsByID.clear();
 	}
