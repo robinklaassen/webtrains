@@ -11,20 +11,21 @@ const DEFAULT_SPEED_FACTOR = 450;
  * Internally uses dayjs objects for all timestamp operations.
  */
 export class GameClock {
-	private currentTimestamp: dayjs.Dayjs;
-	private lastTriggeredTimestamp: dayjs.Dayjs;
+	private currentTimestamp: dayjs.Dayjs = dayjs();
+	private currentRoundedTimestamp: dayjs.Dayjs = dayjs();
+	private lastTriggeredTimestamp: dayjs.Dayjs = dayjs();
 	private isRunning: boolean = false;
 	private listeners: ((timestamp: dayjs.Dayjs) => void)[] = [];
 
 	constructor(timestamp: Date) {
-		const roundedTimestamp = roundToNearestTenSeconds(dayjs(timestamp));
-		this.currentTimestamp = roundedTimestamp;
-		this.lastTriggeredTimestamp = roundedTimestamp;
+		this.resetTimestamp(dayjs(timestamp));
 	}
 
 	resetTimestamp(timestamp: dayjs.Dayjs) {
 		this.currentTimestamp = timestamp;
-		this.lastTriggeredTimestamp = timestamp;
+		const roundedTimestamp = roundToNearestTenSeconds(this.currentTimestamp);
+		this.currentRoundedTimestamp = roundedTimestamp;
+		this.lastTriggeredTimestamp = roundedTimestamp;
 	}
 
 	start() {
@@ -39,21 +40,25 @@ export class GameClock {
 	incrementTime(deltaTime: number, speedFactor: number = DEFAULT_SPEED_FACTOR) {
 		if (!this.isRunning) return;
 
-		this.currentTimestamp = roundToNearestTenSeconds(
-			this.currentTimestamp.add(deltaTime * speedFactor, "second"),
+		this.currentTimestamp = this.currentTimestamp.add(
+			deltaTime * speedFactor,
+			"second",
+		);
+		this.currentRoundedTimestamp = roundToNearestTenSeconds(
+			this.currentTimestamp,
 		);
 
-		if (this.currentTimestamp.isAfter(this.lastTriggeredTimestamp)) {
-			this.lastTriggeredTimestamp = this.currentTimestamp;
+		if (this.currentRoundedTimestamp.isAfter(this.lastTriggeredTimestamp)) {
+			this.lastTriggeredTimestamp = this.currentRoundedTimestamp;
 			this.listeners.forEach((listener) => {
-				listener(this.currentTimestamp);
+				listener(this.currentRoundedTimestamp);
 			});
 		}
 	}
 
 	// Formatted timestamp for display in the UI
 	getFormattedDateTime(): string {
-		return this.currentTimestamp.format("YYYY-MM-DD HH:mm");
+		return this.currentRoundedTimestamp.format("YYYY-MM-DD HH:mm");
 	}
 
 	addEventListener(listener: (timestamp: dayjs.Dayjs) => void) {
