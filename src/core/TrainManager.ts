@@ -13,6 +13,7 @@ export class TrainManager {
 	private scene: THREE.Scene;
 	private trainsByID: Map<number, Train> = new Map();
 	private trainTypes: Map<number, string> = new Map();
+	private trainMaterials: Map<number, string> = new Map();
 	private isPlaying: boolean = false;
 	private gameClock: GameClock;
 	private trainCache: TrainCache;
@@ -44,6 +45,10 @@ export class TrainManager {
 			startTime.toISOString(),
 			endTime.toISOString(),
 		);
+		this.trainMaterials = await this.trainCache.dataProvider.getTrainMaterials(
+			startTime.toISOString(),
+			endTime.toISOString(),
+		);
 
 		this.destroyAllTrains();
 
@@ -64,6 +69,7 @@ export class TrainManager {
 		});
 	}
 
+	// Get the amount of currently active trains in the scene, for display/debugging purposes
 	getTrainCount(): number {
 		return this.trainsByID.size;
 	}
@@ -123,6 +129,7 @@ export class TrainManager {
 		const train = new Train(
 			position,
 			this.trainTypes.get(id) ?? "Unknown",
+			this.trainMaterials.get(id),
 			timestamp,
 		);
 		this.scene.add(train.mesh);

@@ -42,6 +42,23 @@ export class TrainDataProvider {
 		);
 	}
 
+	async getTrainMaterials(
+		start: string,
+		end: string,
+	): Promise<Map<number, string>> {
+		const url = new URL("/trains/materials/main", this.API_BASE_URL);
+		url.searchParams.append("start", start);
+		url.searchParams.append("end", end);
+
+		const data = await this.fetchWithRetry(url.toString(), "train materials");
+		return new Map(
+			Object.entries(data as Record<string, string>).map(([key, value]) => [
+				Number(key),
+				value,
+			]),
+		);
+	}
+
 	/**
 	 * Fetches data from the API with timeout and retry logic.
 	 */

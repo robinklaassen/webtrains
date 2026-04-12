@@ -3,11 +3,28 @@ import * as THREE from "three";
 
 const SPHERE_RADIUS = 1;
 
-const COLOR_MAP: { [key: string]: number } = {
+const DEFAULT_COLOR = 0xffffff; // white
+
+const _TYPE_COLOR_MAP: { [key: string]: number } = {
 	SPR: 0xffff00, // yellow
 	IC: 0x0000ff, // blue
 	ARR: 0xff0000, // red
 	Unknown: 0xffffff, // white
+};
+
+// tip: use extension 'Color Picker Universal' in VSCode
+const MATERIAL_COLOR_MAP: { [key: string]: number } = {
+	// intercity
+	VIRM: 0x00ffc8,
+	DDZ: 0x00a2ff,
+	ICM: 0x8c00ff,
+	ICNG: 0x0000ff,
+
+	// sprinter
+	SLT: 0xc3e600,
+	SNG: 0xffff00,
+	FLIRT: 0xff8800,
+	GTW: 0xff0000,
 };
 
 /**
@@ -40,6 +57,7 @@ export class Train {
 
 	mesh: THREE.Mesh;
 	type: string = "Unknown"; // TODO use enum for train types
+	material: string = "Unknown"; // TODO use enum for train materials
 
 	// Movement is done by interpolation between origin and target based on alpha factor [0, 1].
 	origin: THREE.Vector3;
@@ -52,10 +70,15 @@ export class Train {
 	constructor(
 		position: THREE.Vector3,
 		type: string,
+		material: string | undefined,
 		timestamp: dayjs.Dayjs = dayjs(),
 	) {
 		this.type = type;
-		const color = COLOR_MAP[type] ?? 0xffffff;
+		if (material) {
+			this.material = material;
+		}
+
+		const color = MATERIAL_COLOR_MAP[this.material] ?? DEFAULT_COLOR;
 
 		// Use shared geometry and cached material (Tier 1 & 2 optimization)
 		this.mesh = new THREE.Mesh(Train.sharedGeometry, Train.getMaterial(color));
