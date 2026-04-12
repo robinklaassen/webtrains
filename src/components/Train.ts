@@ -5,12 +5,12 @@ const SPHERE_RADIUS = 1;
 
 const DEFAULT_COLOR = 0xffffff; // white
 
-const _TYPE_COLOR_MAP: { [key: string]: number } = {
-	SPR: 0xffff00, // yellow
-	IC: 0x0000ff, // blue
-	ARR: 0xff0000, // red
-	Unknown: 0xffffff, // white
-};
+// const TYPE_COLOR_MAP: { [key: string]: number } = {
+// 	SPR: 0xffff00, // yellow
+// 	IC: 0x0000ff, // blue
+// 	ARR: 0xff0000, // red
+// 	Unknown: 0xffffff, // white
+// };
 
 // tip: use extension 'Color Picker Universal' in VSCode
 const MATERIAL_COLOR_MAP: { [key: string]: number } = {
