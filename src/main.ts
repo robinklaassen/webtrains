@@ -12,6 +12,7 @@ import {
 } from "@/three";
 // UI setup
 import { DebugGUI, UIManager } from "@/ui";
+import { MATERIAL_COLOR_MAP } from "./components/Train";
 import { GameClock } from "./core/GameClock";
 import { TrainCache } from "./core/TrainCache";
 import { TrainDataProvider } from "./core/TrainDataProvider";
@@ -75,3 +76,12 @@ function render() {
 	// Render
 	rendererSetup.render(scene, camera);
 }
+
+// setup legend once, no need to update it every frame
+const legendText = Object.entries(MATERIAL_COLOR_MAP)
+	.map(([material, color]) => {
+		const hexColor = `#${color.toString(16).padStart(6, "0")}`;
+		return `<span style="color: ${hexColor}">${material}</span>`;
+	})
+	.join("<br/>");
+uiManager.updateLegend(legendText);

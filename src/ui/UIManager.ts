@@ -7,11 +7,13 @@ export class UIManager {
 	private statusElement: HTMLElement | null;
 	private trainCountElement: HTMLElement | null;
 	private sceneObjectCountElement: HTMLElement | null;
+	private legendElement: HTMLElement | null;
 
 	constructor() {
 		this.clockElement = document.getElementById("clock");
 		this.statusElement = document.getElementById("status");
 		this.trainCountElement = document.getElementById("train-count");
+		this.legendElement = document.getElementById("legend");
 		this.sceneObjectCountElement =
 			document.getElementById("scene-object-count");
 	}
@@ -49,6 +51,15 @@ export class UIManager {
 	updateSceneObjectCount(count: number): void {
 		if (this.sceneObjectCountElement) {
 			this.sceneObjectCountElement.textContent = `Scene object count: ${count}`;
+		}
+	}
+
+	/**
+	 * Update the legend display with train type/material color info.
+	 */
+	updateLegend(legendText: string): void {
+		if (this.legendElement) {
+			this.legendElement.innerHTML = legendText;
 		}
 	}
 }

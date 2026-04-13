@@ -13,7 +13,7 @@ const DEFAULT_COLOR = 0xffffff; // white
 // };
 
 // tip: use extension 'Color Picker Universal' in VSCode
-const MATERIAL_COLOR_MAP: { [key: string]: number } = {
+export const MATERIAL_COLOR_MAP: { [key: string]: number } = {
 	// intercity
 	VIRM: 0x00ffc8,
 	DDZ: 0x00a2ff,
