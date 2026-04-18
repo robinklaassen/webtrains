@@ -8,8 +8,8 @@ interface LightConfig {
 
 const DEFAULT_CONFIG: LightConfig = {
 	ambientIntensity: 0x404040,
-	directionalIntensity: 1,
-	directionalPosition: [-150, 150, -150],
+	directionalIntensity: 3,
+	directionalPosition: [-150, 300, -150],
 };
 
 /**

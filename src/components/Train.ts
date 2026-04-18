@@ -1,7 +1,7 @@
 import dayjs from "dayjs";
 import * as THREE from "three";
 
-const SPHERE_RADIUS = 1;
+const SPHERE_RADIUS = .7;
 
 const DEFAULT_COLOR = 0xffffff; // white
 
@@ -34,8 +34,8 @@ export class Train {
 	// Shared resources across all train instances (Tier 1 & 2 optimization)
 	private static readonly sharedGeometry = new THREE.SphereGeometry(
 		SPHERE_RADIUS,
-		16, // width segments (reduced from 32 for Tier 2 optimization)
-		16, // height segments (reduced from 32 for Tier 2 optimization)
+		32, // width segments (reduced from 32 for Tier 2 optimization)
+		32, // height segments (reduced from 32 for Tier 2 optimization)
 	);
 	private static readonly materialCache = new Map<
 		number,
