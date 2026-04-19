@@ -43,11 +43,13 @@ export function createCamera(
  * - cameraDistanceToTarget: distance from camera to target.
  * - cameraTilt: degrees above the horizontal XZ plane (0 = horizontal, 90 = straight above).
  * - cameraPan: degrees around the Y axis (azimuth), measured from the +X axis toward +Z.
+ * - fov: optional field of view (in degrees) to animate toward for this move.
  */
 export interface CameraOrbitParameters {
 	cameraDistanceToTarget: number;
 	cameraTilt: number;
 	cameraPan: number;
+	fov?: number;
 }
 
 /**
@@ -98,6 +100,8 @@ interface CameraAnimationState {
 	endPosition: THREE.Vector3;
 	startTarget: THREE.Vector3;
 	endTarget: THREE.Vector3;
+	startFov: number;
+	endFov: number;
 	elapsedSeconds: number;
 	durationSeconds: number;
 	active: boolean;
@@ -175,6 +179,9 @@ export class CameraAnimator {
 		const startTarget = this.cameraTarget.clone();
 		const endTarget = newTarget.clone();
 
+		const startFov = this.camera.fov;
+		const endFov = orbit.fov ?? this.camera.fov;
+
 		const duration =
 			durationSeconds !== undefined
 				? Math.max(durationSeconds, 0.001)
@@ -185,6 +192,8 @@ export class CameraAnimator {
 			endPosition,
 			startTarget,
 			endTarget,
+			startFov,
+			endFov,
 			elapsedSeconds: 0,
 			durationSeconds: duration,
 			active: true,
@@ -283,10 +292,13 @@ export class CameraAnimator {
 			easedT,
 		);
 		const target = lerpVector3(state.startTarget, state.endTarget, easedT);
+		const fov = THREE.MathUtils.lerp(state.startFov, state.endFov, easedT);
 
 		this.camera.position.copy(position);
 		this.camera.lookAt(target);
 		this.cameraTarget.copy(target);
+		this.camera.fov = fov;
+		this.camera.updateProjectionMatrix();
 
 		if (t >= 1) {
 			state.active = false;
