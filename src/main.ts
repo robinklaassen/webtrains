@@ -5,6 +5,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { TrainManager } from "@/core/TrainManager";
 // Three.js setup
 import {
+	CameraAnimator,
 	createCamera,
 	createScene,
 	RendererSetup,
@@ -24,6 +25,7 @@ import { TrainDataProvider } from "./core/TrainDataProvider";
 const scene = createScene();
 const camera = createCamera();
 setupLighting(scene);
+const cameraAnimator = new CameraAnimator(camera, new THREE.Vector3(0, 0, 0));
 
 const rendererSetup = new RendererSetup();
 rendererSetup.initialize(scene, camera, animate);
@@ -48,7 +50,10 @@ const trainManager = new TrainManager(scene, gameClock, trainCache);
 // ============================================================================
 
 const uiManager = new UIManager();
-const debugGUI = new DebugGUI(trainManager);
+const debugGUI = new DebugGUI(trainManager, cameraAnimator);
+
+// Automatically start an animation on load
+debugGUI.getParams().startNewAnimation();
 
 // ============================================================================
 // ANIMATION LOOP
@@ -62,6 +67,9 @@ function animate() {
 function render() {
 	const deltaTime = timer.getDelta();
 	const guiParams = debugGUI.getParams();
+
+	// Update camera animation
+	cameraAnimator.update(deltaTime);
 
 	// Update game systems
 	trainManager.update(deltaTime, guiParams.clockSpeedFactor);

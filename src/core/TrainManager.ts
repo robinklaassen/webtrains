@@ -17,7 +17,9 @@ export class TrainManager {
 	private isPlaying: boolean = false;
 	private gameClock: GameClock;
 	private trainCache: TrainCache;
+	private animationStartTime: dayjs.Dayjs = dayjs();
 	private animationEndTime: dayjs.Dayjs = dayjs();
+	private shouldLoop: boolean = false;
 	status: string = "stopped";
 
 	constructor(scene: THREE.Scene, gameClock: GameClock, cache: TrainCache) {
@@ -37,8 +39,11 @@ export class TrainManager {
 	async newAnimation(
 		startTime: dayjs.Dayjs,
 		endTime: dayjs.Dayjs,
+		options?: { loop?: boolean },
 	): Promise<void> {
+		this.animationStartTime = startTime;
 		this.animationEndTime = endTime;
+		this.shouldLoop = options?.loop ?? false;
 		this.status = "loading";
 		await this.trainCache.ensureRangeLoaded(startTime, endTime);
 		this.trainTypes = await this.trainCache.dataProvider.getTrainTypes(
@@ -83,11 +88,21 @@ export class TrainManager {
 		if (!this.isPlaying) return;
 
 		if (timestamp.valueOf() >= this.animationEndTime.valueOf()) {
-			this.gameClock.stop();
-			this.isPlaying = false;
-			this.status = "stopped";
+			if (this.shouldLoop && this.animationStartTime) {
+				console.log("Animation ended, restarting (loop enabled)");
+				this.gameClock.stop();
+				this.isPlaying = false;
+				// Restart animation from the original start time without awaiting
+				void this.newAnimation(this.animationStartTime, this.animationEndTime, {
+					loop: true,
+				});
+			} else {
+				this.gameClock.stop();
+				this.isPlaying = false;
+				this.status = "stopped";
 
-			console.log("Animation ended");
+				console.log("Animation ended");
+			}
 			return;
 		}
 
