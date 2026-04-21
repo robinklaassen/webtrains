@@ -1,7 +1,7 @@
 import dayjs from "dayjs";
 import * as THREE from "three";
 
-const SPHERE_RADIUS = .7;
+const SPHERE_RADIUS = 0.7;
 
 const DEFAULT_COLOR = 0xffffff; // white
 

@@ -90,4 +90,4 @@ export const CAMERA_MOVEMENT_ZOOM_IN: CameraKeyframeConfig[] = [
 			fov: 10,
 		},
 	},
-]
+];
