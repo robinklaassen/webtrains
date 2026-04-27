@@ -40,14 +40,14 @@ export function addSvgBackground(scene: THREE.Scene): void {
 			// Rotate from XY into XZ (y = height)
 			group.rotation.x = -Math.PI / 2;
 
-			const SCALE = 0.4;
+			const SCALE = 0.35;
 
 			// Mirror along Y to flip vertically
 			group.scale.set(SCALE, -SCALE, SCALE);
 
-			group.position.y = 0.1;
-			group.position.x = 0;
-			group.position.z = -10;
+			group.position.y = -30;
+			group.position.x = -0.1;
+			group.position.z = 0;
 
 			group.renderOrder = -10;
 
