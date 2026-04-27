@@ -17,6 +17,7 @@ export class RendererSetup {
 		this.renderer = new THREE.WebGLRenderer({ antialias: true });
 		this.renderer.setPixelRatio(config.pixelRatio ?? window.devicePixelRatio);
 		this.renderer.setSize(window.innerWidth, window.innerHeight);
+		this.renderer.setClearColor("#143D73");
 
 		// Add event listener for window resize
 		window.addEventListener("resize", () => this.handleResize());

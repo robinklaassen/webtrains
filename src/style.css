@@ -1,7 +1,7 @@
 body {
 	overflow: hidden;
 	margin: 0px;
-	background-color: black;
+	background-color: #194C8F;
 }
 
 #info {
@@ -11,7 +11,7 @@ body {
 	color: white;
 	font-family: Arial, sans-serif;
 	font-size: 14px;
-	background-color: rgba(0, 0, 0, 0.5);
+	background-color: #194C8F;
 	padding: 10px;
 	border-radius: 5px;
 }

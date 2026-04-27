@@ -10,6 +10,7 @@ import {
 	createScene,
 	RendererSetup,
 	setupLighting,
+	addSvgBackground,
 } from "@/three";
 // UI setup
 import { DebugGUI, UIManager } from "@/ui";
@@ -26,6 +27,7 @@ const scene = createScene();
 const camera = createCamera();
 setupLighting(scene);
 const cameraAnimator = new CameraAnimator(camera, new THREE.Vector3(0, 0, 0));
+addSvgBackground(scene);
 
 const rendererSetup = new RendererSetup();
 rendererSetup.initialize(scene, camera, animate);
