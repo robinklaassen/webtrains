@@ -37,21 +37,16 @@ export function addSvgBackground(scene: THREE.Scene): void {
 				child.position.sub(center);
 			}
 
-			// Rotate from XY into XZ (y = height)
-			group.rotation.x = -Math.PI / 2;
+		const SCALE = 0.38;
 
-			const SCALE = 0.35;
+		group.rotation.x = -Math.PI / 2;
+		group.scale.set(SCALE, -SCALE, SCALE);
 
-			// Mirror along Y to flip vertically
-			group.scale.set(SCALE, -SCALE, SCALE);
+		// x/z = floor/map plane
+		// y = vertical height
+		group.position.set(-10, 0, -1);
 
-			group.position.y = -30;
-			group.position.x = -0.1;
-			group.position.z = 0;
-
-			group.renderOrder = -10;
-
-			scene.add(group);
+		scene.add(group);
 		},
 		undefined,
 		(error) => {
