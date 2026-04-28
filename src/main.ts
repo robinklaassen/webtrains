@@ -5,6 +5,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { TrainManager } from "@/core/TrainManager";
 // Three.js setup
 import {
+	addSvgBackground,
 	CameraAnimator,
 	createCamera,
 	createScene,
@@ -26,6 +27,7 @@ const scene = createScene();
 const camera = createCamera();
 setupLighting(scene);
 const cameraAnimator = new CameraAnimator(camera, new THREE.Vector3(0, 0, 0));
+addSvgBackground(scene);
 
 const rendererSetup = new RendererSetup();
 rendererSetup.initialize(scene, camera, animate);
