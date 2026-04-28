@@ -5,12 +5,12 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { TrainManager } from "@/core/TrainManager";
 // Three.js setup
 import {
+	addSvgBackground,
 	CameraAnimator,
 	createCamera,
 	createScene,
 	RendererSetup,
 	setupLighting,
-	addSvgBackground,
 } from "@/three";
 // UI setup
 import { DebugGUI, UIManager } from "@/ui";

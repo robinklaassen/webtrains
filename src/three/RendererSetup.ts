@@ -1,5 +1,7 @@
 import * as THREE from "three";
 
+const CLEAR_COLOR = "#143D73"; // background color for the scene
+
 interface RendererConfig {
 	pixelRatio?: number;
 }
@@ -17,7 +19,7 @@ export class RendererSetup {
 		this.renderer = new THREE.WebGLRenderer({ antialias: true });
 		this.renderer.setPixelRatio(config.pixelRatio ?? window.devicePixelRatio);
 		this.renderer.setSize(window.innerWidth, window.innerHeight);
-		this.renderer.setClearColor("#143D73");
+		this.renderer.setClearColor(CLEAR_COLOR);
 
 		// Add event listener for window resize
 		window.addEventListener("resize", () => this.handleResize());
