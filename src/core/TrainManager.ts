@@ -2,6 +2,7 @@ import dayjs from "dayjs";
 import type * as THREE from "three";
 import { Train } from "@/components/Train";
 import type { TrainPosition } from "@/models";
+import { TrainAnimationStatus } from "@/models";
 import { vectorizeXY } from "@/utils";
 import type { GameClock } from "./GameClock";
 import type { TrainCache } from "./TrainCache";
@@ -23,7 +24,7 @@ export class TrainManager {
 	private animationStartTime: dayjs.Dayjs = dayjs();
 	private animationEndTime: dayjs.Dayjs = dayjs();
 	private shouldLoop: boolean = false;
-	status: string = "stopped";
+	status: TrainAnimationStatus = TrainAnimationStatus.STOPPED;
 
 	constructor(scene: THREE.Scene, gameClock: GameClock, cache: TrainCache) {
 		this.scene = scene;
@@ -38,54 +39,41 @@ export class TrainManager {
 	 * Start a new animation for the trains!
 	 * @param startTime - dayjs timestamp to start from
 	 * @param endTime - dayjs timestamp to end at
+	 * @param options - Optional configuration: loop (whether to restart after end), delay (milliseconds to wait before loading)
 	 */
 	async newAnimation(
 		startTime: dayjs.Dayjs,
 		endTime: dayjs.Dayjs,
-		options?: { loop?: boolean },
+		options?: { loop?: boolean; delay?: number },
 	): Promise<void> {
 		this.animationStartTime = startTime;
 		this.animationEndTime = endTime;
 		this.shouldLoop = options?.loop ?? false;
-		this.status = "loading";
+		this.status = TrainAnimationStatus.LOADING;
 
-		await this.loadAnimationData(startTime, endTime);
-		this.startAnimationFromTimestamp(startTime);
-	}
+		if (options?.delay) {
+			// Create a delay promise
+			const delayPromise = new Promise<void>((resolve) =>
+				setTimeout(() => resolve(), options.delay),
+			);
 
-	/**
-	 * Start a new animation after a delay, with web requests running during the wait.
-	 * Animation starts when both the delay and all web requests are complete.
-	 * @param startTime - dayjs timestamp to start from
-	 * @param endTime - dayjs timestamp to end at
-	 */
-	private async delayedNewAnimation(
-		startTime: dayjs.Dayjs,
-		endTime: dayjs.Dayjs,
-		options?: { loop?: boolean },
-	): Promise<void> {
-		this.animationStartTime = startTime;
-		this.animationEndTime = endTime;
-		this.shouldLoop = options?.loop ?? false;
-		this.status = "loading";
+			// Create a loading promise
+			const loadingPromise = this.loadAnimationData(startTime, endTime);
 
-		// Create a delay promise
-		const delayPromise = new Promise<void>((resolve) =>
-			setTimeout(() => resolve(), LOOP_DELAY_MS),
-		);
+			// Wait for both delay and loading to complete
+			await Promise.all([delayPromise, loadingPromise]);
+		} else {
+			await this.loadAnimationData(startTime, endTime);
+		}
 
-		// Create a loading promise
-		const loadingPromise = this.loadAnimationData(startTime, endTime);
-
-		// Wait for both delay and loading to complete
-		await Promise.all([delayPromise, loadingPromise]);
-
-		// Now start the animation
-		this.startAnimationFromTimestamp(startTime);
+		if (this.status === TrainAnimationStatus.LOADING) {
+			this.startAnimationFromTimestamp(startTime);
+		}
 	}
 
 	/**
 	 * Load animation data (train types and materials) from cache and data provider.
+	 * Sets error status and cleans up trains if loading fails.
 	 * @param startTime - Animation start time
 	 * @param endTime - Animation end time
 	 */
@@ -93,15 +81,24 @@ export class TrainManager {
 		startTime: dayjs.Dayjs,
 		endTime: dayjs.Dayjs,
 	): Promise<void> {
-		await this.trainCache.ensureRangeLoaded(startTime, endTime);
-		this.trainTypes = await this.trainCache.dataProvider.getTrainTypes(
-			startTime.toISOString(),
-			endTime.toISOString(),
-		);
-		this.trainMaterials = await this.trainCache.dataProvider.getTrainMaterials(
-			startTime.toISOString(),
-			endTime.toISOString(),
-		);
+		try {
+			await this.trainCache.ensureRangeLoaded(startTime, endTime);
+			this.trainTypes = await this.trainCache.dataProvider.getTrainTypes(
+				startTime.toISOString(),
+				endTime.toISOString(),
+			);
+			this.trainMaterials =
+				await this.trainCache.dataProvider.getTrainMaterials(
+					startTime.toISOString(),
+					endTime.toISOString(),
+				);
+		} catch (error) {
+			const errorMessage =
+				error instanceof Error ? error.message : String(error);
+			this.status = TrainAnimationStatus.ERROR;
+			console.error(`[TrainManager] Animation failed: ${errorMessage}`, error);
+			this.destroyAllTrains();
+		}
 	}
 
 	/**
@@ -116,7 +113,7 @@ export class TrainManager {
 		this.gameClock.resetTimestamp(timestamp); // Reset game clock so animation starts from the beginning of the preloaded data
 		this.gameClock.start(); // Start the game clock to begin the animation
 		this.isPlaying = true;
-		this.status = "playing";
+		this.status = TrainAnimationStatus.PLAYING;
 	}
 
 	// Updates every frame from the render loop
@@ -147,17 +144,14 @@ export class TrainManager {
 				this.gameClock.stop();
 				this.isPlaying = false;
 				// Restart animation from the original start time with delay and web requests running in parallel
-				void this.delayedNewAnimation(
-					this.animationStartTime,
-					this.animationEndTime,
-					{
-						loop: true,
-					},
-				);
+				void this.newAnimation(this.animationStartTime, this.animationEndTime, {
+					loop: true,
+					delay: LOOP_DELAY_MS,
+				});
 			} else {
 				this.gameClock.stop();
 				this.isPlaying = false;
-				this.status = "stopped";
+				this.status = TrainAnimationStatus.STOPPED;
 
 				console.log("Animation ended");
 			}

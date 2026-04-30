@@ -1,3 +1,5 @@
+import type { TrainAnimationStatus } from "@/models";
+
 /**
  * Manages UI element updates: clock display, status, train count.
  * Keeps DOM manipulation centralized and separate from game logic.
@@ -30,9 +32,11 @@ export class UIManager {
 	/**
 	 * Update the status display.
 	 */
-	updateStatus(status: string): void {
+	updateStatus(status: string | TrainAnimationStatus): void {
 		if (this.statusElement) {
-			this.statusElement.textContent = `Status: ${status}`;
+			const displayStatus =
+				typeof status === "string" ? status : status.toString();
+			this.statusElement.textContent = `Status: ${displayStatus}`;
 		}
 	}
 

@@ -1,3 +1,13 @@
+/**
+ * Status of train animation playback.
+ */
+export enum TrainAnimationStatus {
+	STOPPED = "stopped",
+	LOADING = "loading",
+	PLAYING = "playing",
+	ERROR = "error",
+}
+
 export interface TrainRecord {
 	timestamp: string; // ISO formatted timestamp string from API
 	id: number;
