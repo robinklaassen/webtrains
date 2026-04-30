@@ -9,6 +9,9 @@ import type { TrainCache } from "./TrainCache";
 // Amount of seconds after train with no updates will be removed
 const DESTROY_TRAIN_AFTER_SECONDS = 60;
 
+// Delay in milliseconds between loop animations
+const LOOP_DELAY_MS = 5000;
+
 export class TrainManager {
 	private scene: THREE.Scene;
 	private trainsByID: Map<number, Train> = new Map();
@@ -45,6 +48,51 @@ export class TrainManager {
 		this.animationEndTime = endTime;
 		this.shouldLoop = options?.loop ?? false;
 		this.status = "loading";
+
+		await this.loadAnimationData(startTime, endTime);
+		this.startAnimationFromTimestamp(startTime);
+	}
+
+	/**
+	 * Start a new animation after a delay, with web requests running during the wait.
+	 * Animation starts when both the delay and all web requests are complete.
+	 * @param startTime - dayjs timestamp to start from
+	 * @param endTime - dayjs timestamp to end at
+	 */
+	private async delayedNewAnimation(
+		startTime: dayjs.Dayjs,
+		endTime: dayjs.Dayjs,
+		options?: { loop?: boolean },
+	): Promise<void> {
+		this.animationStartTime = startTime;
+		this.animationEndTime = endTime;
+		this.shouldLoop = options?.loop ?? false;
+		this.status = "loading";
+
+		// Create a delay promise
+		const delayPromise = new Promise<void>((resolve) =>
+			setTimeout(() => resolve(), LOOP_DELAY_MS),
+		);
+
+		// Create a loading promise
+		const loadingPromise = this.loadAnimationData(startTime, endTime);
+
+		// Wait for both delay and loading to complete
+		await Promise.all([delayPromise, loadingPromise]);
+
+		// Now start the animation
+		this.startAnimationFromTimestamp(startTime);
+	}
+
+	/**
+	 * Load animation data (train types and materials) from cache and data provider.
+	 * @param startTime - Animation start time
+	 * @param endTime - Animation end time
+	 */
+	private async loadAnimationData(
+		startTime: dayjs.Dayjs,
+		endTime: dayjs.Dayjs,
+	): Promise<void> {
 		await this.trainCache.ensureRangeLoaded(startTime, endTime);
 		this.trainTypes = await this.trainCache.dataProvider.getTrainTypes(
 			startTime.toISOString(),
@@ -54,7 +102,13 @@ export class TrainManager {
 			startTime.toISOString(),
 			endTime.toISOString(),
 		);
+	}
 
+	/**
+	 * Start the animation from the given timestamp.
+	 * @param startTime - The timestamp to start animation from
+	 */
+	private startAnimationFromTimestamp(startTime: dayjs.Dayjs): void {
 		this.destroyAllTrains();
 
 		const timestamp = dayjs(startTime);
@@ -92,10 +146,14 @@ export class TrainManager {
 				console.log("Animation ended, restarting (loop enabled)");
 				this.gameClock.stop();
 				this.isPlaying = false;
-				// Restart animation from the original start time without awaiting
-				void this.newAnimation(this.animationStartTime, this.animationEndTime, {
-					loop: true,
-				});
+				// Restart animation from the original start time with delay and web requests running in parallel
+				void this.delayedNewAnimation(
+					this.animationStartTime,
+					this.animationEndTime,
+					{
+						loop: true,
+					},
+				);
 			} else {
 				this.gameClock.stop();
 				this.isPlaying = false;
