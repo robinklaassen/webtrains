@@ -34,9 +34,7 @@ export class UIManager {
 	 */
 	updateStatus(status: string | TrainAnimationStatus): void {
 		if (this.statusElement) {
-			const displayStatus =
-				typeof status === "string" ? status : status.toString();
-			this.statusElement.textContent = `Status: ${displayStatus}`;
+			this.statusElement.textContent = `Status: ${status}`;
 		}
 	}
 
