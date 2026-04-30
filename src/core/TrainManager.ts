@@ -7,8 +7,8 @@ import { vectorizeXY } from "@/utils";
 import type { GameClock } from "./GameClock";
 import type { TrainCache } from "./TrainCache";
 
-// Amount of seconds after train with no updates will be removed
-const DESTROY_TRAIN_AFTER_SECONDS = 60;
+// Amount of 'in-game' seconds after train with no updates will be removed
+const DESTROY_TRAIN_AFTER_SECONDS = 120;
 
 // Delay in milliseconds between loop animations
 const LOOP_DELAY_MS = 5000;
@@ -139,20 +139,17 @@ export class TrainManager {
 		if (!this.isPlaying) return;
 
 		if (timestamp.valueOf() >= this.animationEndTime.valueOf()) {
+			this.gameClock.stop();
+			this.isPlaying = false;
+			this.status = TrainAnimationStatus.STOPPED;
+
 			if (this.shouldLoop && this.animationStartTime) {
 				console.log("Animation ended, restarting (loop enabled)");
-				this.gameClock.stop();
-				this.isPlaying = false;
-				// Restart animation from the original start time with delay and web requests running in parallel
 				void this.newAnimation(this.animationStartTime, this.animationEndTime, {
 					loop: true,
 					delay: LOOP_DELAY_MS,
 				});
 			} else {
-				this.gameClock.stop();
-				this.isPlaying = false;
-				this.status = TrainAnimationStatus.STOPPED;
-
 				console.log("Animation ended");
 			}
 			return;
