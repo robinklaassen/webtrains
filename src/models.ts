@@ -1,4 +1,23 @@
 /**
+ * Train material types.
+ */
+export const TrainMaterial = {
+	// intercity
+	VIRM: "VIRM",
+	DDZ: "DDZ",
+	ICM: "ICM",
+	ICNG: "ICNG",
+
+	// sprinter
+	SLT: "SLT",
+	SNG: "SNG",
+	FLIRT: "FLIRT",
+	GTW: "GTW",
+} as const;
+
+export type TrainMaterial = (typeof TrainMaterial)[keyof typeof TrainMaterial];
+
+/**
  * Status of train animation playback.
  */
 export const TrainAnimationStatus = {

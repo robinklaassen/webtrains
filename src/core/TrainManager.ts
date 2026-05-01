@@ -1,7 +1,7 @@
 import dayjs from "dayjs";
 import type * as THREE from "three";
 import { Train } from "@/components/Train";
-import type { TrainPosition } from "@/models";
+import type { TrainMaterial, TrainPosition } from "@/models";
 import { TrainAnimationStatus } from "@/models";
 import { vectorizeXY } from "@/utils";
 import type { GameClock } from "./GameClock";
@@ -193,7 +193,7 @@ export class TrainManager {
 		const train = new Train(
 			position,
 			this.trainTypes.get(id) ?? "Unknown",
-			this.trainMaterials.get(id),
+			this.trainMaterials.get(id) as TrainMaterial | undefined,
 			timestamp,
 		);
 		this.scene.add(train.mesh);
