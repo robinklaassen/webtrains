@@ -6,13 +6,6 @@ const SPHERE_RADIUS = 0.7;
 
 const DEFAULT_COLOR = 0xffffff; // white
 
-// const TYPE_COLOR_MAP: { [key: string]: number } = {
-// 	SPR: 0xffff00, // yellow
-// 	IC: 0x0000ff, // blue
-// 	ARR: 0xff0000, // red
-// 	Unknown: 0xffffff, // white
-// };
-
 // tip: use extension 'Color Picker Universal' in VSCode
 export const MATERIAL_COLOR_MAP: Record<TrainMaterial, number> = {
 	[TrainMaterial.VIRM]: 0x00ffc8,
@@ -29,11 +22,11 @@ export const MATERIAL_COLOR_MAP: Record<TrainMaterial, number> = {
  * Represents a train in the 3D scene.
  */
 export class Train {
-	// Shared resources across all train instances (Tier 1 & 2 optimization)
+	// Shared resources across all train instances
 	private static readonly sharedGeometry = new THREE.SphereGeometry(
 		SPHERE_RADIUS,
-		32, // width segments (reduced from 32 for Tier 2 optimization)
-		32, // height segments (reduced from 32 for Tier 2 optimization)
+		32, // width segments
+		32, // height segments
 	);
 	private static readonly materialCache = new Map<
 		number,
