@@ -34,6 +34,22 @@ body {
 	margin-bottom: 5px;
 }
 
+#legend span {
+	cursor: pointer;
+	transition: opacity 0.2s ease;
+	font-weight: 500;
+}
+
+#legend span:hover {
+	opacity: 0.8;
+	text-decoration: underline;
+}
+
+#legend span.legend-hidden {
+	opacity: 0.4;
+	text-decoration: line-through;
+}
+
 /* Position dat.gui panel in top right corner */
 .dg.ac {
 	position: fixed;
