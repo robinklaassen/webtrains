@@ -11,7 +11,7 @@ import type { TrainCache } from "./TrainCache";
 const DESTROY_TRAIN_AFTER_SECONDS = 120;
 
 // Delay in milliseconds between loop animations
-const LOOP_DELAY_MS = 500000; // testing
+const LOOP_DELAY_MS = 5000;
 
 // Three.js layer assignment for train materials.
 // Layer 0 is reserved for default objects; material layers start at 1.
@@ -137,14 +137,40 @@ export class TrainManager {
 
 	/**
 	 * Toggle the visibility of trains with a specific material.
+	 * Implements multi-select behavior:
+	 * - If all materials are visible, clicking one hides all others (select only that one)
+	 * - If some materials are visible, toggle the clicked material in/out
+	 * - If no materials would be visible, show all trains instead
 	 * Uses Three.js layers for efficient rendering control.
 	 * @param material - The train material to toggle
 	 */
 	toggleMaterialVisibility(material: TrainMaterial): void {
-		if (this.hiddenMaterials.has(material)) {
-			this.hiddenMaterials.delete(material);
+		const allMaterials = this.getAllMaterials();
+		const visibleMaterials = this.getVisibleMaterials();
+		const visibleCount = visibleMaterials.size;
+		const totalMaterials = allMaterials.length;
+
+		// Case 1: All materials currently visible - select only the clicked one
+		if (visibleCount === totalMaterials) {
+			this.hiddenMaterials.clear();
+			allMaterials.forEach((m) => {
+				if (m !== material) {
+					this.hiddenMaterials.add(m);
+				}
+			});
 		} else {
-			this.hiddenMaterials.add(material);
+			// Case 2: Some materials visible - toggle the clicked one
+			if (this.hiddenMaterials.has(material)) {
+				this.hiddenMaterials.delete(material);
+			} else {
+				this.hiddenMaterials.add(material);
+			}
+
+			// Case 3: If no materials would be left visible, show all
+			const resultingVisibleCount = this.getVisibleMaterials().size;
+			if (resultingVisibleCount === 0) {
+				this.hiddenMaterials.clear();
+			}
 		}
 
 		// Update all trains' layer visibility based on hidden materials
@@ -164,6 +190,34 @@ export class TrainManager {
 	 */
 	getHiddenMaterials(): Set<TrainMaterial> {
 		return this.hiddenMaterials;
+	}
+
+	/**
+	 * Get the set of currently visible materials.
+	 */
+	getVisibleMaterials(): Set<TrainMaterial> {
+		const allMaterials = this.getAllMaterials();
+		const visible = new Set<TrainMaterial>();
+		allMaterials.forEach((material) => {
+			if (!this.hiddenMaterials.has(material)) {
+				visible.add(material);
+			}
+		});
+		return visible;
+	}
+
+	/**	 * Check if a specific material is currently visible.
+	 * @param material - The train material to check
+	 * @returns true if the material trains are visible, false if hidden
+	 */
+	isMaterialVisible(material: TrainMaterial): boolean {
+		return !this.hiddenMaterials.has(material);
+	}
+
+	/**	 * Get all available train materials.
+	 */
+	private getAllMaterials(): TrainMaterial[] {
+		return Object.values(TrainMaterial);
 	}
 
 	/**
