@@ -1,41 +1,32 @@
 import dayjs from "dayjs";
 import * as THREE from "three";
+import { TrainMaterial } from "../models";
 
 const SPHERE_RADIUS = 0.7;
 
 const DEFAULT_COLOR = 0xffffff; // white
 
-// const TYPE_COLOR_MAP: { [key: string]: number } = {
-// 	SPR: 0xffff00, // yellow
-// 	IC: 0x0000ff, // blue
-// 	ARR: 0xff0000, // red
-// 	Unknown: 0xffffff, // white
-// };
-
 // tip: use extension 'Color Picker Universal' in VSCode
-export const MATERIAL_COLOR_MAP: { [key: string]: number } = {
-	// intercity
-	VIRM: 0x00ffc8,
-	DDZ: 0x00a2ff,
-	ICM: 0x8c00ff,
-	ICNG: 0x0000ff,
-
-	// sprinter
-	SLT: 0xc3e600,
-	SNG: 0xffff00,
-	FLIRT: 0xff8800,
-	GTW: 0xff0000,
+export const MATERIAL_COLOR_MAP: Record<TrainMaterial, number> = {
+	[TrainMaterial.VIRM]: 0x00ffc8,
+	[TrainMaterial.DDZ]: 0x00a2ff,
+	[TrainMaterial.ICM]: 0x8c00ff,
+	[TrainMaterial.ICNG]: 0x0000ff,
+	[TrainMaterial.SLT]: 0xc3e600,
+	[TrainMaterial.SNG]: 0xffff00,
+	[TrainMaterial.FLIRT]: 0xff8800,
+	[TrainMaterial.GTW]: 0xff0000,
 };
 
 /**
  * Represents a train in the 3D scene.
  */
 export class Train {
-	// Shared resources across all train instances (Tier 1 & 2 optimization)
+	// Shared resources across all train instances
 	private static readonly sharedGeometry = new THREE.SphereGeometry(
 		SPHERE_RADIUS,
-		32, // width segments (reduced from 32 for Tier 2 optimization)
-		32, // height segments (reduced from 32 for Tier 2 optimization)
+		32, // width segments
+		32, // height segments
 	);
 	private static readonly materialCache = new Map<
 		number,
@@ -57,7 +48,7 @@ export class Train {
 
 	mesh: THREE.Mesh;
 	type: string = "Unknown"; // TODO use enum for train types
-	material: string = "Unknown"; // TODO use enum for train materials
+	material: TrainMaterial = TrainMaterial.VIRM;
 
 	// Movement is done by interpolation between origin and target based on alpha factor [0, 1].
 	origin: THREE.Vector3;
@@ -70,7 +61,7 @@ export class Train {
 	constructor(
 		position: THREE.Vector3,
 		type: string,
-		material: string | undefined,
+		material: TrainMaterial | undefined,
 		timestamp: dayjs.Dayjs = dayjs(),
 	) {
 		this.type = type;

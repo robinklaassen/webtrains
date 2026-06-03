@@ -25,6 +25,11 @@ import { TrainDataProvider } from "./core/TrainDataProvider";
 
 const scene = createScene();
 const camera = createCamera();
+// Configure camera to render all material layers for train visibility toggling
+camera.layers.enable(0); // Default layer
+TrainManager.getRequiredLayers().forEach((layer) => {
+	camera.layers.enable(layer);
+});
 setupLighting(scene);
 const cameraAnimator = new CameraAnimator(camera, new THREE.Vector3(0, 0, 0));
 addSvgBackground(scene);
@@ -95,3 +100,6 @@ const legendText = Object.entries(MATERIAL_COLOR_MAP)
 	})
 	.join("<br/>");
 uiManager.updateLegend(legendText);
+
+// Set up material visibility toggle listeners on legend
+uiManager.setupMaterialToggleListeners(trainManager);

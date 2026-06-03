@@ -2,7 +2,7 @@ import dayjs from "dayjs";
 import type * as THREE from "three";
 import { Train } from "@/components/Train";
 import type { TrainPosition } from "@/models";
-import { TrainAnimationStatus } from "@/models";
+import { TrainAnimationStatus, TrainMaterial } from "@/models";
 import { vectorizeXY } from "@/utils";
 import type { GameClock } from "./GameClock";
 import type { TrainCache } from "./TrainCache";
@@ -12,6 +12,10 @@ const DESTROY_TRAIN_AFTER_SECONDS = 120;
 
 // Delay in milliseconds between loop animations
 const LOOP_DELAY_MS = 5000;
+
+// Three.js layer assignment for train materials.
+// Layer 0 is reserved for default objects; material layers start at 1.
+const MATERIAL_LAYER_OFFSET = 1;
 
 export class TrainManager {
 	private scene: THREE.Scene;
@@ -24,6 +28,7 @@ export class TrainManager {
 	private animationStartTime: dayjs.Dayjs = dayjs();
 	private animationEndTime: dayjs.Dayjs = dayjs();
 	private shouldLoop: boolean = false;
+	private hiddenMaterials: Set<TrainMaterial> = new Set();
 	status: TrainAnimationStatus = TrainAnimationStatus.STOPPED;
 
 	constructor(scene: THREE.Scene, gameClock: GameClock, cache: TrainCache) {
@@ -131,6 +136,114 @@ export class TrainManager {
 	}
 
 	/**
+	 * Toggle the visibility of trains with a specific material.
+	 * Implements multi-select behavior:
+	 * - If all materials are visible, clicking one hides all others (select only that one)
+	 * - If some materials are visible, toggle the clicked material in/out
+	 * - If no materials would be visible, show all trains instead
+	 * Uses Three.js layers for efficient rendering control.
+	 * @param material - The train material to toggle
+	 */
+	toggleMaterialVisibility(material: TrainMaterial): void {
+		const allMaterials = this.getAllMaterials();
+		const visibleMaterials = this.getVisibleMaterials();
+		const visibleCount = visibleMaterials.size;
+		const totalMaterials = allMaterials.length;
+
+		// Case 1: All materials currently visible - select only the clicked one
+		if (visibleCount === totalMaterials) {
+			this.hiddenMaterials.clear();
+			allMaterials.forEach((m) => {
+				if (m !== material) {
+					this.hiddenMaterials.add(m);
+				}
+			});
+		} else {
+			// Case 2: Some materials visible - toggle the clicked one
+			if (this.hiddenMaterials.has(material)) {
+				this.hiddenMaterials.delete(material);
+			} else {
+				this.hiddenMaterials.add(material);
+			}
+
+			// Case 3: If no materials would be left visible, show all
+			const resultingVisibleCount = this.getVisibleMaterials().size;
+			if (resultingVisibleCount === 0) {
+				this.hiddenMaterials.clear();
+			}
+		}
+
+		// Update all trains' layer visibility based on hidden materials
+		this.trainsByID.forEach((train) => {
+			const layerIndex = this.getMaterialLayer(train.material);
+			const isHidden = this.hiddenMaterials.has(train.material);
+			if (isHidden) {
+				train.mesh.layers.disable(layerIndex);
+			} else {
+				train.mesh.layers.enable(layerIndex);
+			}
+		});
+	}
+
+	/**
+	 * Get the set of currently hidden materials.
+	 */
+	getHiddenMaterials(): Set<TrainMaterial> {
+		return this.hiddenMaterials;
+	}
+
+	/**
+	 * Get the set of currently visible materials.
+	 */
+	getVisibleMaterials(): Set<TrainMaterial> {
+		const allMaterials = this.getAllMaterials();
+		const visible = new Set<TrainMaterial>();
+		allMaterials.forEach((material) => {
+			if (!this.hiddenMaterials.has(material)) {
+				visible.add(material);
+			}
+		});
+		return visible;
+	}
+
+	/**	 * Check if a specific material is currently visible.
+	 * @param material - The train material to check
+	 * @returns true if the material trains are visible, false if hidden
+	 */
+	isMaterialVisible(material: TrainMaterial): boolean {
+		return !this.hiddenMaterials.has(material);
+	}
+
+	/**	 * Get all available train materials.
+	 */
+	private getAllMaterials(): TrainMaterial[] {
+		return Object.values(TrainMaterial);
+	}
+
+	/**
+	 * Map a train material to a Three.js layer index.
+	 * Layer 0 is reserved for default objects; material layers start at MATERIAL_LAYER_OFFSET.
+	 */
+	private getMaterialLayer(material: TrainMaterial): number {
+		const materials = Object.values(TrainMaterial);
+		const index = materials.indexOf(material as TrainMaterial);
+		return index >= 0 ? index + MATERIAL_LAYER_OFFSET : MATERIAL_LAYER_OFFSET;
+	}
+
+	/**
+	 * Get all Three.js layer indices required for rendering train materials.
+	 * Used to configure camera and renderer for material visibility toggling.
+	 * @returns Array of layer indices [1, 2, 3, ..., N] where N is the number of materials
+	 */
+	static getRequiredLayers(): number[] {
+		const materialCount = Object.keys(TrainMaterial).length;
+		return Array.from(
+			{ length: materialCount },
+			(_, i) => i + MATERIAL_LAYER_OFFSET,
+		);
+	}
+
+	/**
 	 * Updates train targets based on actual train location data for the given timestamp.
 	 * Fetches data from cache (extends if necessary via background request).
 	 * @param timestamp - The current game timestamp
@@ -190,12 +303,28 @@ export class TrainManager {
 		position: THREE.Vector3,
 		timestamp: dayjs.Dayjs = dayjs(),
 	): Train {
+		const material = this.trainMaterials.get(id);
+		if (!material) {
+			console.log(
+				`[TrainManager] Train ${id} has NO material in map. Map has ${this.trainMaterials.size} entries.`,
+			);
+		}
 		const train = new Train(
 			position,
 			this.trainTypes.get(id) ?? "Unknown",
-			this.trainMaterials.get(id),
+			material as TrainMaterial | undefined,
 			timestamp,
 		);
+
+		// Assign layer based on material
+		const layerIndex = this.getMaterialLayer(train.material);
+		train.mesh.layers.set(layerIndex);
+
+		// If material is currently hidden, disable the layer
+		if (this.hiddenMaterials.has(train.material)) {
+			train.mesh.layers.disable(layerIndex);
+		}
+
 		this.scene.add(train.mesh);
 		this.trainsByID.set(id, train);
 		return train;
