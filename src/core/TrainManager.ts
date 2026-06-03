@@ -11,7 +11,7 @@ import type { TrainCache } from "./TrainCache";
 const DESTROY_TRAIN_AFTER_SECONDS = 120;
 
 // Delay in milliseconds between loop animations
-const LOOP_DELAY_MS = 5000;
+const LOOP_DELAY_MS = 500000; // testing
 
 // Three.js layer assignment for train materials.
 // Layer 0 is reserved for default objects; material layers start at 1.
@@ -249,10 +249,16 @@ export class TrainManager {
 		position: THREE.Vector3,
 		timestamp: dayjs.Dayjs = dayjs(),
 	): Train {
+		const material = this.trainMaterials.get(id);
+		if (!material) {
+			console.log(
+				`[TrainManager] Train ${id} has NO material in map. Map has ${this.trainMaterials.size} entries.`,
+			);
+		}
 		const train = new Train(
 			position,
 			this.trainTypes.get(id) ?? "Unknown",
-			this.trainMaterials.get(id) as TrainMaterial | undefined,
+			material as TrainMaterial | undefined,
 			timestamp,
 		);
 
