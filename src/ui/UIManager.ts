@@ -11,6 +11,8 @@ export class UIManager {
 	private trainCountElement: HTMLElement | null;
 	private sceneObjectCountElement: HTMLElement | null;
 	private legendElement: HTMLElement | null;
+	// Per-material count elements in the legend, keyed by material
+	private legendCountElements = new Map<TrainMaterial, HTMLElement>();
 
 	constructor() {
 		this.clockElement = document.getElementById("clock");
@@ -22,111 +24,121 @@ export class UIManager {
 	}
 
 	/**
+	 * Write text to an element, skipping the DOM mutation when unchanged.
+	 * The update methods below are called every frame from the render loop.
+	 */
+	private static setText(element: HTMLElement | null, text: string): void {
+		if (element && element.textContent !== text) {
+			element.textContent = text;
+		}
+	}
+
+	/**
 	 * Update the clock display with formatted date/time.
 	 */
 	updateClock(formattedDateTime: string): void {
-		if (this.clockElement) {
-			this.clockElement.textContent = formattedDateTime;
-		}
+		UIManager.setText(this.clockElement, formattedDateTime);
 	}
 
 	/**
 	 * Update the status display.
 	 */
 	updateStatus(status: string | TrainAnimationStatus): void {
-		if (this.statusElement) {
-			this.statusElement.textContent = `Status: ${status}`;
-		}
+		UIManager.setText(this.statusElement, `Status: ${status}`);
 	}
 
 	/**
 	 * Update the train count display.
 	 */
 	updateTrainCount(count: number): void {
-		if (this.trainCountElement) {
-			this.trainCountElement.textContent = `Train count: ${count}`;
-		}
+		UIManager.setText(this.trainCountElement, `Train count: ${count}`);
 	}
 
 	/**
 	 * Update the scene object count display.
 	 */
 	updateSceneObjectCount(count: number): void {
-		if (this.sceneObjectCountElement) {
-			this.sceneObjectCountElement.textContent = `Scene object count: ${count}`;
-		}
+		UIManager.setText(
+			this.sceneObjectCountElement,
+			`Scene object count: ${count}`,
+		);
 	}
 
 	/**
-	 * Update the legend display with train type/material color info.
+	 * Build the legend: one clickable colored entry per material, each showing a
+	 * live train count next to the name. Clicking an entry toggles that
+	 * material's visibility. Call once at startup.
+	 * @param colorMap - Material -> hex color used for the trains.
+	 * @param trainManager - Reference to TrainManager for toggling visibility.
 	 */
-	updateLegend(legendText: string): void {
-		if (this.legendElement) {
-			this.legendElement.innerHTML = legendText;
-		}
-	}
-
-	/**
-	 * Set up click listeners on legend material spans to toggle visibility.
-	 * Adds visual feedback for hidden materials.
-	 * @param trainManager - Reference to TrainManager for toggling visibility
-	 */
-	setupMaterialToggleListeners(trainManager: TrainManager): void {
-		if (!this.legendElement) return;
-
-		const spans = this.legendElement.querySelectorAll("span");
-		spans.forEach((span) => {
-			const material = span.textContent?.trim() as TrainMaterial;
-			if (!material) return;
-
-			span.style.cursor = "pointer";
-
-			// Initialize strikethrough based on current visibility state
-			this.updateLegendEntryVisibility(span, trainManager, material);
-
-			span.addEventListener("click", (e) => {
-				// Toggle visibility in train manager
-				trainManager.toggleMaterialVisibility(material);
-
-				// Update visual feedback for all legend entries based on new visibility state
-				this.updateAllLegendEntries(trainManager);
-
-				e.stopPropagation();
-			});
-		});
-	}
-
-	/**
-	 * Update all legend entries to reflect current visibility state.
-	 * @param trainManager - Reference to TrainManager
-	 */
-	private updateAllLegendEntries(trainManager: TrainManager): void {
-		if (!this.legendElement) return;
-
-		const spans = this.legendElement.querySelectorAll("span");
-		spans.forEach((span) => {
-			const material = span.textContent?.trim() as TrainMaterial;
-			if (!material) return;
-
-			this.updateLegendEntryVisibility(span, trainManager, material);
-		});
-	}
-
-	/**
-	 * Update the strikethrough style for a legend entry based on actual train visibility.
-	 * @param span - The legend span element
-	 * @param trainManager - Reference to TrainManager
-	 * @param material - The train material for this legend entry
-	 */
-	private updateLegendEntryVisibility(
-		span: Element,
+	buildLegend(
+		colorMap: Record<TrainMaterial, number>,
 		trainManager: TrainManager,
-		material: TrainMaterial,
 	): void {
-		if (trainManager.isMaterialVisible(material)) {
-			span.classList.remove("legend-hidden");
-		} else {
-			span.classList.add("legend-hidden");
+		if (!this.legendElement) return;
+		this.legendElement.innerHTML = "";
+		this.legendCountElements.clear();
+
+		for (const [material, color] of Object.entries(colorMap) as [
+			TrainMaterial,
+			number,
+		][]) {
+			const hexColor = `#${color.toString(16).padStart(6, "0")}`;
+
+			const entry = document.createElement("div");
+			entry.className = "legend-entry";
+			entry.dataset.material = material;
+			entry.style.color = hexColor;
+
+			const name = document.createElement("span");
+			name.className = "legend-name";
+			name.textContent = material;
+
+			const count = document.createElement("span");
+			count.className = "legend-count";
+			count.textContent = "0";
+
+			entry.append(name, document.createTextNode(" "), count);
+			entry.addEventListener("click", (event) => {
+				trainManager.toggleMaterialVisibility(material);
+				this.refreshLegendVisibility(trainManager);
+				event.stopPropagation();
+			});
+
+			this.legendElement.appendChild(entry);
+			this.legendCountElements.set(material, count);
 		}
+
+		this.refreshLegendVisibility(trainManager);
+	}
+
+	/**
+	 * Update the per-material train counts shown in the legend.
+	 * Called every frame from the render loop.
+	 */
+	updateLegendCounts(counts: Map<TrainMaterial, number>): void {
+		this.legendCountElements.forEach((element, material) => {
+			UIManager.setText(element, String(counts.get(material) ?? 0));
+		});
+	}
+
+	/**
+	 * Update the strikethrough style of every legend entry based on its
+	 * material's current visibility.
+	 * @param trainManager - Reference to TrainManager.
+	 */
+	private refreshLegendVisibility(trainManager: TrainManager): void {
+		if (!this.legendElement) return;
+		this.legendElement
+			.querySelectorAll<HTMLElement>(".legend-entry")
+			.forEach((entry) => {
+				const material = entry.dataset.material as TrainMaterial | undefined;
+				if (!material) return;
+				if (trainManager.isMaterialVisible(material)) {
+					entry.classList.remove("legend-hidden");
+				} else {
+					entry.classList.add("legend-hidden");
+				}
+			});
 	}
 }

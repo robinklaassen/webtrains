@@ -34,20 +34,25 @@ body {
 	margin-bottom: 5px;
 }
 
-#legend span {
+#legend .legend-entry {
 	cursor: pointer;
 	transition: opacity 0.2s ease;
 	font-weight: 500;
 }
 
-#legend span:hover {
+#legend .legend-entry:hover {
 	opacity: 0.8;
 	text-decoration: underline;
 }
 
-#legend span.legend-hidden {
+#legend .legend-entry.legend-hidden {
 	opacity: 0.4;
 	text-decoration: line-through;
+}
+
+#legend .legend-count {
+	font-weight: 400;
+	opacity: 0.75;
 }
 
 /* Position dat.gui panel in top right corner */

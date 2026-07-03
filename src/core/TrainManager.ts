@@ -1,6 +1,9 @@
 import dayjs from "dayjs";
-import type * as THREE from "three";
+import * as THREE from "three";
 import { Train } from "@/components/Train";
+import type { TrainEffects } from "@/components/TrainEffects";
+import { TrainInstances } from "@/components/TrainInstances";
+import type { TrainParticles } from "@/components/TrainParticles";
 import type { TrainPosition } from "@/models";
 import { TrainAnimationStatus, TrainMaterial } from "@/models";
 import { vectorizeXY } from "@/utils";
@@ -10,15 +13,19 @@ import type { TrainCache } from "./TrainCache";
 // Amount of 'in-game' seconds after train with no updates will be removed
 const DESTROY_TRAIN_AFTER_SECONDS = 120;
 
-// Delay in milliseconds between loop animations
-const LOOP_DELAY_MS = 5000;
+// End-of-animation outro timeline (real seconds). A single slow camera glide
+// spans the whole outro (see main.ts) for a smooth finish.
+const OUTRO_FADE_SECONDS = 2; // trains fade out over this, leaving their trails
+const OUTRO_LIFT_AT_SECONDS = 5; // trails lift into the sky and the clock rewinds
+const OUTRO_DURATION_SECONDS = 7; // the outro ends and the next animation begins
 
-// Three.js layer assignment for train materials.
-// Layer 0 is reserved for default objects; material layers start at 1.
-const MATERIAL_LAYER_OFFSET = 1;
+// Scratch vector for converting API coordinates without allocating per train
+const _position = new THREE.Vector3();
 
 export class TrainManager {
-	private scene: THREE.Scene;
+	private instances: TrainInstances;
+	private effects: TrainEffects;
+	private particles: TrainParticles;
 	private trainsByID: Map<number, Train> = new Map();
 	private trainTypes: Map<number, string> = new Map();
 	private trainMaterials: Map<number, string> = new Map();
@@ -29,10 +36,30 @@ export class TrainManager {
 	private animationEndTime: dayjs.Dayjs = dayjs();
 	private shouldLoop: boolean = false;
 	private hiddenMaterials: Set<TrainMaterial> = new Set();
+	// Suppresses spawn beams for the first populated tick of an animation, so the
+	// initial mass of trains appears without an overwhelming wave of effects.
+	private suppressEffects: boolean = false;
+	// Real seconds elapsed in the end-of-animation outro, or null when not in it.
+	private outroElapsedSeconds: number | null = null;
+	// One-shot guard for the outro's lift/rewind event.
+	private outroLifted: boolean = false;
 	status: TrainAnimationStatus = TrainAnimationStatus.STOPPED;
 
-	constructor(scene: THREE.Scene, gameClock: GameClock, cache: TrainCache) {
-		this.scene = scene;
+	// Fired once when the outro begins, with the duration the camera glide should
+	// take. The host (main.ts) moves the camera to the outro shot.
+	onOutroCameraMove?: (durationSeconds: number) => void;
+
+	constructor(
+		scene: THREE.Scene,
+		camera: THREE.PerspectiveCamera,
+		gameClock: GameClock,
+		cache: TrainCache,
+		effects: TrainEffects,
+		particles: TrainParticles,
+	) {
+		this.instances = new TrainInstances(scene, camera);
+		this.effects = effects;
+		this.particles = particles;
 		this.gameClock = gameClock;
 		this.trainCache = cache;
 		this.gameClock.addEventListener((timestamp) =>
@@ -72,7 +99,7 @@ export class TrainManager {
 		}
 
 		if (this.status === TrainAnimationStatus.LOADING) {
-			this.startAnimationFromTimestamp(startTime);
+			this.startAnimationFromTimestamp();
 		}
 	}
 
@@ -107,27 +134,103 @@ export class TrainManager {
 	}
 
 	/**
-	 * Start the animation from the given timestamp.
-	 * @param startTime - The timestamp to start animation from
+	 * Start the animation from animationStartTime (set by newAnimation).
 	 */
-	private startAnimationFromTimestamp(startTime: dayjs.Dayjs): void {
-		this.destroyAllTrains();
+	private startAnimationFromTimestamp(): void {
+		this.resetToStart();
+		this.beginPlayback();
+	}
 
-		const timestamp = dayjs(startTime);
-		this.onGameClockUpdate(timestamp); // Initialize trains based on first timestamp's data
-		this.gameClock.resetTimestamp(timestamp); // Reset game clock so animation starts from the beginning of the preloaded data
-		this.gameClock.start(); // Start the game clock to begin the animation
+	/**
+	 * Clear the world and rewind the clock to the animation's start, without
+	 * starting playback: lift any lingering particles into the sky, restore the
+	 * train fade, remove the trains, and reset the clock display to the start.
+	 */
+	private resetToStart(): void {
+		this.particles.liftOff();
+		this.instances.setFade(1);
+		this.destroyAllTrains();
+		this.gameClock.resetTimestamp(this.animationStartTime);
+	}
+
+	/**
+	 * Begin playback from the current (start) timestamp. The first populated
+	 * tick is kept silent so the initial wave of trains has no spawn beams.
+	 */
+	private beginPlayback(): void {
+		this.suppressEffects = true;
+		this.gameClock.start();
 		this.isPlaying = true;
 		this.status = TrainAnimationStatus.PLAYING;
 	}
 
 	// Updates every frame from the render loop
 	update(deltaTime: number, speedFactor: number) {
+		if (this.outroElapsedSeconds !== null) {
+			this.updateOutro(deltaTime);
+			return;
+		}
 		if (!this.isPlaying) return;
 
 		this.trainsByID.forEach((train) => {
 			train.update(deltaTime, speedFactor);
+			// Hidden materials leave no trail.
+			if (this.isMaterialVisible(train.material)) {
+				this.particles.emitTrail(train);
+			}
 		});
+		this.instances.updateMatrices(deltaTime);
+	}
+
+	/**
+	 * Begin the end-of-animation outro. See updateOutro for the timeline; the
+	 * camera glide is delegated to onOutroCameraMove (see main.ts).
+	 */
+	private beginOutro(): void {
+		if (this.outroElapsedSeconds !== null) return;
+		this.outroElapsedSeconds = 0;
+		this.outroLifted = false;
+		this.onOutroCameraMove?.(OUTRO_DURATION_SECONDS);
+	}
+
+	/**
+	 * Advance the outro timeline (real seconds from the end of the animation):
+	 *   0 - OUTRO_FADE_SECONDS:  trains fade out, leaving their trails
+	 *   OUTRO_LIFT_AT_SECONDS:   trails lift into the sky, the clock rewinds
+	 *   OUTRO_DURATION_SECONDS:  the next animation begins
+	 */
+	private updateOutro(deltaTime: number): void {
+		if (this.outroElapsedSeconds === null) return;
+		this.outroElapsedSeconds += deltaTime;
+		const elapsed = this.outroElapsedSeconds;
+
+		// Fade the trains out (smoothstep for a gentle ramp); their trails remain.
+		if (elapsed <= OUTRO_FADE_SECONDS) {
+			const t = elapsed / OUTRO_FADE_SECONDS;
+			const eased = t * t * (3 - 2 * t);
+			this.instances.setFade(1 - eased);
+		}
+		this.instances.updateMatrices(deltaTime);
+
+		// Lift the trails into the sky and rewind the clock to the start.
+		if (!this.outroLifted && elapsed >= OUTRO_LIFT_AT_SECONDS) {
+			this.outroLifted = true;
+			if (this.shouldLoop) {
+				this.resetToStart();
+			} else {
+				this.particles.liftOff();
+			}
+		}
+
+		// The outro is over; begin the next animation (or stop).
+		if (elapsed >= OUTRO_DURATION_SECONDS) {
+			this.outroElapsedSeconds = null;
+			if (this.shouldLoop) {
+				this.beginPlayback();
+			} else {
+				this.status = TrainAnimationStatus.STOPPED;
+			}
+		}
 	}
 
 	// Get the amount of currently active trains in the scene, for display/debugging purposes
@@ -136,12 +239,27 @@ export class TrainManager {
 	}
 
 	/**
+	 * Count active trains grouped by material, for the legend's per-material
+	 * counts. All known materials are present in the result (0 when none).
+	 */
+	getCountsByMaterial(): Map<TrainMaterial, number> {
+		const counts = new Map<TrainMaterial, number>();
+		for (const material of Object.values(TrainMaterial)) {
+			counts.set(material, 0);
+		}
+		this.trainsByID.forEach((train) => {
+			counts.set(train.material, (counts.get(train.material) ?? 0) + 1);
+		});
+		return counts;
+	}
+
+	/**
 	 * Toggle the visibility of trains with a specific material.
 	 * Implements multi-select behavior:
 	 * - If all materials are visible, clicking one hides all others (select only that one)
 	 * - If some materials are visible, toggle the clicked material in/out
 	 * - If no materials would be visible, show all trains instead
-	 * Uses Three.js layers for efficient rendering control.
+	 * Each material is one instanced mesh, so applying visibility is a single flag flip.
 	 * @param material - The train material to toggle
 	 */
 	toggleMaterialVisibility(material: TrainMaterial): void {
@@ -173,23 +291,10 @@ export class TrainManager {
 			}
 		}
 
-		// Update all trains' layer visibility based on hidden materials
-		this.trainsByID.forEach((train) => {
-			const layerIndex = this.getMaterialLayer(train.material);
-			const isHidden = this.hiddenMaterials.has(train.material);
-			if (isHidden) {
-				train.mesh.layers.disable(layerIndex);
-			} else {
-				train.mesh.layers.enable(layerIndex);
-			}
+		// Apply visibility to the per-material instanced meshes
+		allMaterials.forEach((m) => {
+			this.instances.setMaterialVisible(m, !this.hiddenMaterials.has(m));
 		});
-	}
-
-	/**
-	 * Get the set of currently hidden materials.
-	 */
-	getHiddenMaterials(): Set<TrainMaterial> {
-		return this.hiddenMaterials;
 	}
 
 	/**
@@ -221,29 +326,6 @@ export class TrainManager {
 	}
 
 	/**
-	 * Map a train material to a Three.js layer index.
-	 * Layer 0 is reserved for default objects; material layers start at MATERIAL_LAYER_OFFSET.
-	 */
-	private getMaterialLayer(material: TrainMaterial): number {
-		const materials = Object.values(TrainMaterial);
-		const index = materials.indexOf(material as TrainMaterial);
-		return index >= 0 ? index + MATERIAL_LAYER_OFFSET : MATERIAL_LAYER_OFFSET;
-	}
-
-	/**
-	 * Get all Three.js layer indices required for rendering train materials.
-	 * Used to configure camera and renderer for material visibility toggling.
-	 * @returns Array of layer indices [1, 2, 3, ..., N] where N is the number of materials
-	 */
-	static getRequiredLayers(): number[] {
-		const materialCount = Object.keys(TrainMaterial).length;
-		return Array.from(
-			{ length: materialCount },
-			(_, i) => i + MATERIAL_LAYER_OFFSET,
-		);
-	}
-
-	/**
 	 * Updates train targets based on actual train location data for the given timestamp.
 	 * Fetches data from cache (extends if necessary via background request).
 	 * @param timestamp - The current game timestamp
@@ -254,17 +336,7 @@ export class TrainManager {
 		if (timestamp.valueOf() >= this.animationEndTime.valueOf()) {
 			this.gameClock.stop();
 			this.isPlaying = false;
-			this.status = TrainAnimationStatus.STOPPED;
-
-			if (this.shouldLoop && this.animationStartTime) {
-				console.log("Animation ended, restarting (loop enabled)");
-				void this.newAnimation(this.animationStartTime, this.animationEndTime, {
-					loop: true,
-					delay: LOOP_DELAY_MS,
-				});
-			} else {
-				console.log("Animation ended");
-			}
+			this.beginOutro();
 			return;
 		}
 
@@ -276,6 +348,9 @@ export class TrainManager {
 		this.updateTrainTargets(trainData, timestamp);
 		this.destroyInactiveTrains(timestamp);
 
+		// After the first populated tick, resume per-train spawn effects.
+		this.suppressEffects = false;
+
 		// TODO add slowdown effect near end of animation by changing game clock speed
 	}
 
@@ -284,7 +359,7 @@ export class TrainManager {
 		timestamp: dayjs.Dayjs,
 	) {
 		trainData.forEach((position: TrainPosition) => {
-			const positionVector = vectorizeXY(position.x, position.y);
+			const positionVector = vectorizeXY(position.x, position.y, _position);
 
 			// if the train does not exist yet, create it and add to scene
 			if (!this.trainsByID.has(position.id)) {
@@ -316,17 +391,13 @@ export class TrainManager {
 			timestamp,
 		);
 
-		// Assign layer based on material
-		const layerIndex = this.getMaterialLayer(train.material);
-		train.mesh.layers.set(layerIndex);
-
-		// If material is currently hidden, disable the layer
-		if (this.hiddenMaterials.has(train.material)) {
-			train.mesh.layers.disable(layerIndex);
-		}
-
-		this.scene.add(train.mesh);
+		this.instances.add(train);
 		this.trainsByID.set(id, train);
+		// Skip the beam during the bulk initial population (see suppressEffects),
+		// and for hidden materials.
+		if (!this.suppressEffects && this.isMaterialVisible(train.material)) {
+			this.effects.trainAppeared(train);
+		}
 		return train;
 	}
 
@@ -336,17 +407,21 @@ export class TrainManager {
 				timestamp.diff(train.lastUpdateTimestamp, "second") >=
 				DESTROY_TRAIN_AFTER_SECONDS
 			) {
-				this.scene.remove(train.mesh);
+				this.instances.remove(train);
 				this.trainsByID.delete(id);
+				// Hidden materials despawn silently.
+				if (this.isMaterialVisible(train.material)) {
+					this.particles.despawn(train);
+				}
 				console.debug(`Train ${id} destroyed due to inactivity`);
 			}
 		});
 	}
 
 	private destroyAllTrains() {
-		this.trainsByID.forEach((train) => {
-			this.scene.remove(train.mesh);
-		});
+		// Bulk teardown (start / restart / error): no poofs, that would be an
+		// overwhelming mass effect. Individual despawns during play still poof.
+		this.instances.clear();
 		this.trainsByID.clear();
 	}
 }

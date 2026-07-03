@@ -56,9 +56,20 @@ export class GameClock {
 		}
 	}
 
+	// Cache for getFormattedDateTime, which is called every frame but only
+	// changes when the rounded timestamp advances
+	private formattedDateTime: string = "";
+	private formattedTimestampValue: number = Number.NaN;
+
 	// Formatted timestamp for display in the UI
 	getFormattedDateTime(): string {
-		return this.currentRoundedTimestamp.format("YYYY-MM-DD HH:mm");
+		const value = this.currentRoundedTimestamp.valueOf();
+		if (value !== this.formattedTimestampValue) {
+			this.formattedTimestampValue = value;
+			this.formattedDateTime =
+				this.currentRoundedTimestamp.format("YYYY-MM-DD HH:mm");
+		}
+		return this.formattedDateTime;
 	}
 
 	addEventListener(listener: (timestamp: dayjs.Dayjs) => void) {

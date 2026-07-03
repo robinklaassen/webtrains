@@ -134,6 +134,10 @@ export class CameraAnimator {
 	private animationState: CameraAnimationState | null = null;
 	private defaultDurationSeconds: number;
 	private sequenceState: CameraSequenceState | null = null;
+	// When disabled, the animator ignores all programmatic moves and stops
+	// driving the camera, handing it to whoever else controls it (e.g. the user
+	// via OrbitControls).
+	private enabled: boolean = true;
 
 	constructor(
 		camera: THREE.PerspectiveCamera,
@@ -143,6 +147,24 @@ export class CameraAnimator {
 		this.camera = camera;
 		this.cameraTarget = initialTarget.clone();
 		this.defaultDurationSeconds = defaultDurationSeconds;
+	}
+
+	/** Whether the animator is currently driving the camera. */
+	isEnabled(): boolean {
+		return this.enabled;
+	}
+
+	/**
+	 * Enable or disable automatic camera movement. Disabling cancels any
+	 * in-progress move/sequence so the camera is left where it is (e.g. for the
+	 * user to take over); re-enabling lets new moves play again.
+	 */
+	setEnabled(enabled: boolean): void {
+		this.enabled = enabled;
+		if (!enabled) {
+			this.animationState = null;
+			this.sequenceState = null;
+		}
 	}
 
 	/**
@@ -173,6 +195,7 @@ export class CameraAnimator {
 		orbit: CameraOrbitParameters,
 		durationSeconds?: number,
 	): void {
+		if (!this.enabled) return; // user has control; ignore programmatic moves
 		const startPosition = this.camera.position.clone();
 		const endPosition = computeCameraPositionFromTarget(newTarget, orbit);
 
@@ -213,6 +236,7 @@ export class CameraAnimator {
 		totalDurationSeconds?: number,
 		options?: { loop?: boolean },
 	): void {
+		if (!this.enabled) return; // user has control; ignore programmatic moves
 		if (keyframes.length === 0) {
 			return;
 		}
@@ -282,6 +306,7 @@ export class CameraAnimator {
 	 * passing the real-time delta in seconds (e.g. from your render loop).
 	 */
 	update(deltaSeconds: number): void {
+		if (!this.enabled) return;
 		if (!this.animationState || !this.animationState.active) return;
 
 		const state = this.animationState;

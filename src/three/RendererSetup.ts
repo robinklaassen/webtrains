@@ -1,6 +1,11 @@
 import * as THREE from "three";
 
-const CLEAR_COLOR = "#143D73"; // background color for the scene
+// Deep night-blue void around the map; also used as the fog color
+export const SCENE_BACKGROUND_COLOR = "#0a0f2b";
+
+// Rendering above 2x device pixel ratio costs a lot of fill rate for no
+// visible quality gain on high-DPI displays.
+const MAX_PIXEL_RATIO = 2;
 
 interface RendererConfig {
 	pixelRatio?: number;
@@ -17,9 +22,11 @@ export class RendererSetup {
 
 	constructor(config: RendererConfig = {}) {
 		this.renderer = new THREE.WebGLRenderer({ antialias: true });
-		this.renderer.setPixelRatio(config.pixelRatio ?? window.devicePixelRatio);
+		this.renderer.setPixelRatio(
+			config.pixelRatio ?? Math.min(window.devicePixelRatio, MAX_PIXEL_RATIO),
+		);
 		this.renderer.setSize(window.innerWidth, window.innerHeight);
-		this.renderer.setClearColor(CLEAR_COLOR);
+		this.renderer.setClearColor(SCENE_BACKGROUND_COLOR);
 
 		// Add event listener for window resize
 		window.addEventListener("resize", () => this.handleResize());

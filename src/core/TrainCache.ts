@@ -82,13 +82,16 @@ export class TrainCache {
 	private mergeDataIntoCache(data: Map<string, TrainPosition[]>): void {
 		// Data is already keyed by normalized timestamp and contains TrainPosition objects
 		data.forEach((positions, timestampStr) => {
-			if (!this.cache.has(timestampStr)) {
-				this.cache.set(timestampStr, []);
+			const cachedPositions = this.cache.get(timestampStr);
+			if (!cachedPositions) {
+				// New timestamp: store the freshly fetched array directly
+				this.cache.set(timestampStr, positions);
+				return;
 			}
-			const cachedPositions = this.cache.get(timestampStr) ?? [];
-			// Avoid duplicates
+			// Timestamp already cached (overlapping fetches): merge without duplicates
+			const cachedIds = new Set(cachedPositions.map((p) => p.id));
 			positions.forEach((position) => {
-				if (!cachedPositions.some((p) => p.id === position.id)) {
+				if (!cachedIds.has(position.id)) {
 					cachedPositions.push(position);
 				}
 			});
