@@ -307,7 +307,7 @@ export class CameraAnimator {
 	 */
 	update(deltaSeconds: number): void {
 		if (!this.enabled) return;
-		if (!this.animationState || !this.animationState.active) return;
+		if (!this.animationState?.active) return;
 
 		const state = this.animationState;
 		state.elapsedSeconds += deltaSeconds;
