@@ -7,11 +7,20 @@ export function getRandomPosition(): THREE.Vector3 {
 	return new THREE.Vector3(x, 0, z); // using y as height is engine convention
 }
 
-// Convert the RDS coordinates from API to an ingame vector
-export function vectorizeXY(x: number, y: number): THREE.Vector3 {
-	return new THREE.Vector3(x, 0, -y) // using y as height is engine convention, trains move in the xz plane
+// Offset (in km) that centers the map on Amersfoort
+const RDS_CENTER_OFFSET = new THREE.Vector3(155, 0, -463);
+
+// Convert the RDS coordinates from API to an ingame vector.
+// Writes into `out` when provided, to avoid allocating in hot paths.
+export function vectorizeXY(
+	x: number,
+	y: number,
+	out: THREE.Vector3 = new THREE.Vector3(),
+): THREE.Vector3 {
+	return out
+		.set(x, 0, -y) // using y as height is engine convention, trains move in the xz plane
 		.divideScalar(1000) // RDS coordinates to kilometers
-		.sub(new THREE.Vector3(155, 0, -463)); // center on Amersfoort
+		.sub(RDS_CENTER_OFFSET); // center on Amersfoort
 	// NOTE z axis points down in current orientation, that's why we negate the value
 }
 

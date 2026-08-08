@@ -3,6 +3,8 @@
 
 <svg
    id="svg2"
+   role="img"
+   aria-labelledby="nederland-title"
    sodipodi:docname="nederland.svg"
    viewBox="0 0 714.24 858.14"
    sodipodi:version="0.32"
@@ -16,7 +18,9 @@
    xmlns:svg="http://www.w3.org/2000/svg"
    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
    xmlns:cc="http://creativecommons.org/ns#"
-   xmlns:dc="http://purl.org/dc/elements/1.1/"><defs
+   xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <title id="nederland-title">Kaart van Nederland</title>
+  <defs
      id="defs1"><linearGradient
        id="swatch12"
        inkscape:swatch="solid"><stop

@@ -5,7 +5,7 @@ const BACKGROUND_SVG_URL = new URL(
 	"../assets/images/nederland.svg",
 	import.meta.url,
 ).href;
-const BACKGROUND_MESH_COLOR = "#194C8F"; // color for the SVG background mesh
+const BACKGROUND_MESH_COLOR = "#10204e"; // deep night blue for the SVG map, below the bloom threshold
 const BACKGROUND_SCALE = 0.38; // scale factor for the SVG background mesh
 const BACKGROUND_POSITION = new THREE.Vector3(-10, 0, -1); // position for the SVG background mesh
 
@@ -18,13 +18,14 @@ export function addSvgBackground(scene: THREE.Scene): void {
 		(data) => {
 			const group = new THREE.Group();
 
-			for (const path of data.paths) {
-				const material = new THREE.MeshBasicMaterial({
-					color: new THREE.Color(BACKGROUND_MESH_COLOR),
-					transparent: false,
-					side: THREE.DoubleSide,
-				});
+			// All paths share one material (same color for the whole map)
+			const material = new THREE.MeshBasicMaterial({
+				color: new THREE.Color(BACKGROUND_MESH_COLOR),
+				transparent: false,
+				side: THREE.DoubleSide,
+			});
 
+			for (const path of data.paths) {
 				const shapes = SVGLoader.createShapes(path);
 				for (const shape of shapes) {
 					const geometry = new THREE.ShapeGeometry(shape);

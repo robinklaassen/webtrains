@@ -2,6 +2,19 @@ import * as THREE from "three";
 import type { CameraKeyframeConfig } from "./CameraSetup";
 
 /**
+ * Camera shot the end-of-animation outro slowly glides to: a wide, high overview.
+ */
+export const CAMERA_OUTRO_TOP: CameraKeyframeConfig = {
+	target: new THREE.Vector3(0, 0, 0),
+	orbit: {
+		cameraDistanceToTarget: 400,
+		cameraTilt: 60,
+		cameraPan: 0,
+		fov: 40,
+	},
+};
+
+/**
  * Example camera movement presets that can be used to trigger
  * smooth camera tours from the debug UI or other systems.
  */
