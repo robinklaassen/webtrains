@@ -84,6 +84,7 @@ export class DebugGUI {
 		};
 
 		this.gui = new dat.GUI();
+		this.gui.hide();
 		// Live FPS readout (updated via updateFps each frame; .listen() refreshes it).
 		this.gui.add(this.params, "fps").name("FPS").listen();
 		this.gui
